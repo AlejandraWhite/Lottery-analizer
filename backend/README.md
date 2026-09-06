@@ -508,3 +508,46 @@ El proyecto todavía está en fase de desarrollo.
 La prioridad antes de construir toda la interfaz es definir correctamente la lógica que transforma y organiza las columnas, porque esa será la parte principal del sistema.
 
 Una vez definida esa lógica, podremos convertirla en funciones de Python y hacer que PostgreSQL guarde permanentemente el estado de cada análisis.
+
+
+Scraping de las 14 loterías — arquitectura
+Qué hay aquí
+scrapers/base.py — contrato común (LoteriaScraper, ResultadoScrapeado)
+scrapers/loteria_valle.py — scraper real y probado para loteriadelvalle.com
+scrapers/_plantilla.py — copiar/pegar para cada sitio nuevo, con instrucciones
+scrapers/registry.py — lista de scrapers activos + los 13 pendientes
+scrapers/orquestador.py — corre todos y guarda en tu tabla Resultado (mismo patrón dedup que ya usas con datos.gov.co)
+Lo que confirmé revisando 3 de los 14 sitios hoy
+Sitio	Tipo	Estrategia
+loteriadelvalle.com	Estático	requests + bs4 (YA HECHO)
+loteriademedellin.com.co	JS-rendered (placeholder "XXXX" en HTML crudo)	Playwright, o buscar el endpoint AJAX en la pestaña Network
+loteriadelmeta.gov.co	Bloquea bots (403)	Playwright, o headers/sesión más elaborados
+
+Los otros 11 no los revisé — es muy probable que se repartan entre estas mismas 2-3 categorías. Cuando revises cada uno con DevTools (Ctrl+U para ver si el número está en el código fuente), sabrás cuál plantilla usar.
+
+Por qué así y no un scraper genérico
+
+No hay forma honesta de hacer un solo scraper que sirva para los 14 — cada sitio tiene su propio HTML/CMS (WordPress con Elementor, WordPress con otro theme, sitios .gov.co con su propio backend). Aislar cada uno en su propia clase significa que si Lotería del Cauca cambia su web mañana, solo se rompe ese archivo, no los otros 13, y sabes exactamente cuál arreglar por el log ("Sin resultado para Lotería del Cauca").
+
+Cómo seguir
+Instala: pip install requests beautifulsoup4 lxml
+Corre python -m scrapers.loteria_valle para confirmar que Valle funciona en tu máquina (aquí no pude probarlo en vivo porque mi sandbox no tiene salida a internet abierta — solo validé el parser contra el texto real que sí pude leer).
+Para cada uno de los 13 restantes: copia _plantilla.py, ábrelo con Ctrl+U en el navegador, decide si es estático o necesita JS, y complétalo.
+Cuando tengas 2-3 listos, dime cuáles necesitan Playwright y te armo esa variante (es un patrón distinto: navegador headless en vez de requests).
+Actualización: 3 loterías cubiertas sin scraper
+
+Bogotá, Medellín y Santander tienen dataset propio en datos.gov.co (resource_id distinto al general que estaba obsoleto) — ver scrapers/sync_datasets_individuales.py. No necesitan scraper mientras ese dataset se mantenga actualizado. Verifica eso antes de confiar del todo: el dataset general (i3kx-3zps) quedó obsoleto sin avisar, así que conviene chequear periódicamente que la fecha más reciente de cada resource_id nuevo sea de esta semana.
+
+Con esto, quedan 11 sitios por scrapear (antes 13): Meta, Manizales, Cundinamarca, Cruz, Huila, Tolima, Boyacá, Cauca, Risaralda, Quindío, Extra de Colombia.
+
+Actualización: Santander confirmado obsoleto
+
+El usuario verificó 4zwu-ra3f directamente: el dataset está atascado en el sorteo 5060 mientras el sitio real ya va en el 5085 (~25 sorteos de atraso). Se sacó de sync_datasets_individuales.py y vuelve a la lista de scraping pendiente. Quedan 12 sitios por scraper (Meta, Manizales, Cundinamarca, Cruz, Huila, Tolima, Boyacá, Cauca, Santander, Risaralda, Quindío, Extra de Colombia); solo Bogotá y Medellín siguen cubiertas por dataset — y vale la pena revisarlas periódicamente, no dar por sentado que se van a mantener al día para siempre.
+
+Actualización: se migró todo a Playwright
+
+Se decidió scrapear las 12 loterías pendientes con Playwright (no requests+bs4), porque varias necesitan JS renderizado o tienen protección anti-bot básica, y mantener un solo patrón para las 12 es más simple. base.py y el orquestador ahora comparten UN navegador entre los 12 scrapers (más rápido que abrir 12 navegadores). Ver _plantilla_playwright.py para el flujo de cómo completar cada uno.
+
+Instalar antes de correr: pip install playwright && playwright install chromium
+
+También: el dataset de Medellín en datos.gov.co tiene data_updated_at de 2026-06-02 (~3 meses de atraso) — misma señal de alerta que tenía Santander antes de confirmarse que estaba desactualizado. Vale la pena verificarlo con la misma prueba que hiciste con Santander antes de seguir confiando en él.

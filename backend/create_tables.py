@@ -1,6 +1,5 @@
-from database import engine, Base
-import models
-
+from database import Base, engine
+from models import Archivo, Resultado, ContadorTerminacion
 
 print("Creando tablas...")
 

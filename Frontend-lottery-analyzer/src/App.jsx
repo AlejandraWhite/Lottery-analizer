@@ -1,122 +1,158 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import {
+  obtenerAnalisis,
+  obtenerVistaExcel,
+  importarExcel,
+  sincronizarLoteria,
+  eliminarResultado
+} from "./api";
+import TablaAnalisis from "./components/TablaAnalisis";
+import TablaExcel from "./components/TablaExcel";
+import GestorResultados from "./components/GestorResultados";
+import "./index.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const [datos, setDatos] = useState([]);
+  const [vistaExcel, setVistaExcel] = useState(null);
+  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel"
+  const [cargando, setCargando] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [mensaje, setMensaje] = useState("");
+  const [orden, setOrden] = useState("terminacion");
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+  async function cargarTodo() {
+    setCargando(true);
+    try {
+      const [analisis, vista] = await Promise.all([
+        obtenerAnalisis(),
+        obtenerVistaExcel(),
+      ]);
+      setDatos(analisis);
+      setVistaExcel(vista);
+    } catch (e) {
+      setMensaje(e.message);
+    } finally {
+      setCargando(false);
+    }
+  }
 
-      <div className="ticks"></div>
+  useEffect(() => {
+    cargarTodo();
+  }, []);
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+  async function manejarArchivo(evento) {
+    const archivo = evento.target.files[0];
+    if (!archivo) return;
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+    setCargando(true);
+    setMensaje("");
+
+    try {
+      const resultado = await importarExcel(archivo);
+      setMensaje(resultado.mensaje);
+      const vista = await obtenerVistaExcel();
+      setDatos(resultado.analisis);
+      setVistaExcel(vista);
+    } catch (e) {
+      setMensaje(e.message);
+    } finally {
+      setCargando(false);
+      evento.target.value = "";
+    }
+  }
+
+  async function manejarSincronizar() {
+    setSincronizando(true);
+    setMensaje("");
+
+    try {
+      const resultado = await sincronizarLoteria();
+      setMensaje(resultado.mensaje);
+      const vista = await obtenerVistaExcel();
+      setDatos(resultado.analisis);
+      setVistaExcel(vista);
+    } catch (e) {
+      setMensaje(e.message);
+    } finally {
+      setSincronizando(false);
+    }
+  }
+  
+  async function manejarEliminarResultado(id) {
+  setCargando(true);
+  setMensaje("");
+  try {
+    const data = await eliminarResultado(id);
+    setMensaje(data.mensaje);
+    setDatos(data.analisis);
+    setVistaExcel(data.vista_excel);
+  } catch (e) {
+    setMensaje(e.message);
+  } finally {
+    setCargando(false);
+  }
 }
 
-export default App
+  return (
+    <div className="contenedor">
+      <h1>Lottery Analyzer</h1>
+
+      <div className="barra-superior">
+        <label className="subir-archivo">
+          Subir Excel con resultados nuevos
+          <input
+            type="file"
+            accept=".xlsx,.xlsm,.xltx,.xltm"
+            onChange={manejarArchivo}
+          />
+        </label>
+
+        <button onClick={manejarSincronizar} disabled={sincronizando}>
+          {sincronizando ? "Sincronizando..." : "Sincronizar resultados"}
+        </button>
+
+        <div className="pestanas">
+          <button
+            className={ventana === "resumen" ? "activa" : ""}
+            onClick={() => setVentana("resumen")}
+          >
+            Resumen
+          </button>
+          <button
+            className={ventana === "excel" ? "activa" : ""}
+            onClick={() => setVentana("excel")}
+          >
+            Vista columnas
+          </button>
+        </div>
+
+        {ventana === "resumen" && (
+          <select value={orden} onChange={(e) => setOrden(e.target.value)}>
+            <option value="terminacion">Ordenar por terminación</option>
+            <option value="frecuencia">Ordenar por frecuencia</option>
+          </select>
+        )}
+      </div>
+
+      <GestorResultados
+  onResultado={(data) => {
+    setDatos(data.analisis);
+    setVistaExcel(data.vista_excel);
+  }}
+/>
+
+      {mensaje && <p className="mensaje">{mensaje}</p>}
+      {cargando && <p className="cargando">Cargando...</p>}
+
+      {ventana === "resumen" ? (
+        <TablaAnalisis datos={datos} orden={orden} />
+      ) : (
+        <TablaExcel
+  vista={vistaExcel}
+  onEliminar={manejarEliminarResultado}
+  cargando={cargando}
+/>
+      )}
+    </div>
+  );
+}

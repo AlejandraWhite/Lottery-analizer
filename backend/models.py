@@ -49,7 +49,6 @@ class Resultado(Base):
         "Archivo",
         back_populates="resultados"
     )
-creado_en = Column(DateTime, nullable=False, default=datetime.now)
 
 
 class EstadoTerminacion(Base):

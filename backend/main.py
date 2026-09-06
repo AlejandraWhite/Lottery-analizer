@@ -6,6 +6,8 @@ from openpyxl import load_workbook
 from datetime import datetime
 from io import BytesIO
 from pydantic import BaseModel
+import os
+from fastapi.middleware.cors import CORSMiddleware
 
 import crud
 from database import SessionLocal
@@ -29,18 +31,22 @@ from apscheduler.schedulers.background import BackgroundScheduler
 app = FastAPI()
 from fastapi.middleware.cors import CORSMiddleware
  
+frontend_url = os.getenv("FRONTEND_URL")
+ 
+origenes_permitidos = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if frontend_url:
+    origenes_permitidos.append(frontend_url)
+ 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",   # Vite en desarrollo
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=origenes_permitidos,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
- 
-
 # =========================================================
 # CONEXIÓN A BASE DE DATOS
 # =========================================================

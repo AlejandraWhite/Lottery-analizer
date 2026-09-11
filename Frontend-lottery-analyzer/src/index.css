@@ -318,3 +318,18 @@ margin-right: calc(-50vw + 40px);
     max-height: 20rem;
   }
 }
+
+.vista-miercoles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: #2a313d;
+  border: 1px solid #2a313d;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .vista-miercoles {
+    grid-template-columns: 1fr;
+  }
+}

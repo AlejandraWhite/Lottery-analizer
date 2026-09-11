@@ -9,12 +9,13 @@ import {
 import TablaAnalisis from "./components/TablaAnalisis";
 import TablaExcel from "./components/TablaExcel";
 import GestorResultados from "./components/GestorResultados";
+import PantallaMiercoles from "./components/PantallaMiercoles";
 import "./index.css";
 
 export default function App() {
   const [datos, setDatos] = useState([]);
   const [vistaExcel, setVistaExcel] = useState(null);
-  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel"
+  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel" | "miercoles"
   const [cargando, setCargando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -112,20 +113,25 @@ export default function App() {
         </button>
 
         <div className="pestanas">
-          <button
-            className={ventana === "resumen" ? "activa" : ""}
-            onClick={() => setVentana("resumen")}
-          >
-            Resumen
-          </button>
-          <button
-            className={ventana === "excel" ? "activa" : ""}
-            onClick={() => setVentana("excel")}
-          >
-            Vista columnas
-          </button>
-        </div>
-
+  <button
+    className={ventana === "resumen" ? "activa" : ""}
+    onClick={() => setVentana("resumen")}
+  >
+    Resumen
+  </button>
+  <button
+    className={ventana === "excel" ? "activa" : ""}
+    onClick={() => setVentana("excel")}
+  >
+    Vista columnas
+  </button>
+  <button
+    className={ventana === "miercoles" ? "activa" : ""}
+    onClick={() => setVentana("miercoles")}
+  >
+    Miércoles
+  </button>
+</div>
         {ventana === "resumen" && (
           <select value={orden} onChange={(e) => setOrden(e.target.value)}>
             <option value="terminacion">Ordenar por terminación</option>
@@ -145,14 +151,16 @@ export default function App() {
       {cargando && <p className="cargando">Cargando...</p>}
 
       {ventana === "resumen" ? (
-        <TablaAnalisis datos={datos} orden={orden} />
-      ) : (
-        <TablaExcel
-  vista={vistaExcel}
-  onEliminar={manejarEliminarResultado}
-  cargando={cargando}
-/>
-      )}
+  <TablaAnalisis datos={datos} orden={orden} />
+) : ventana === "excel" ? (
+  <TablaExcel
+    vista={vistaExcel}
+    onEliminar={manejarEliminarResultado}
+    cargando={cargando}
+  />
+) : (
+  <PantallaMiercoles />
+)}
     </div>
   );
 }

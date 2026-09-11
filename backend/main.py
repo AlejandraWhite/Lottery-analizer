@@ -8,8 +8,9 @@ from io import BytesIO
 from pydantic import BaseModel
 import os
 from fastapi.middleware.cors import CORSMiddleware
-
+import models_miercoles  
 import crud
+from sqlalchemy import text
 from database import SessionLocal
 from services.analisis import (
     construir_analisis_completo,
@@ -25,6 +26,7 @@ from services.analisis import (
     ResultadoNoEncontrado,       # <- nuevo
     ResultadoDemasiadoAntiguo, 
 )
+from services import miercoles as servicios_miercoles
 from apscheduler.schedulers.background import BackgroundScheduler
  
 
@@ -85,6 +87,30 @@ def crear_resultado_manual(
         "resultado": convertir_resultado(resultado),
         "analisis": list(analisis.values()),
         "vista_excel": vista,
+    }
+
+
+class ResultadoManualMiercolesIn(BaseModel):
+    fecha: str          # admite "YYYY-MM-DD" o "DD/MM/YYYY"
+    numero: str
+    loteria: str        # "Meta" | "Valle" | "Manizales"
+
+
+@app.post("/miercoles/manual")
+def crear_resultado_manual_miercoles(
+    datos: ResultadoManualMiercolesIn,
+    db: Session = Depends(get_db),
+):
+    try:
+        servicios_miercoles.registrar_resultado_manual_miercoles(
+            db, datos.loteria, datos.fecha, datos.numero
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "mensaje": "Resultado agregado correctamente",
+        "vista": servicios_miercoles.construir_vista_miercoles(db),
     }
 # =========================================================
 # INICIO
@@ -467,5 +493,79 @@ async def importar_historico(
         "archivo_id": archivo.id,
         "analisis": list(analisis.values()),
     }
+
+@app.get("/debug/conexion")
+def debug_conexion(db: Session = Depends(get_db)):
+    fila = db.execute(text(
+        "SELECT current_database(), current_schema(), inet_server_addr()::text, inet_server_port()"
+    )).fetchone()
+    columnas = db.execute(text(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'resultados_miercoles'"
+    )).fetchall()
+    return {
+        "base_datos": fila[0],
+        "esquema": fila[1],
+        "host": fila[2],
+        "puerto": fila[3],
+        "columnas_resultados_miercoles": [c[0] for c in columnas],
+    }
+@app.post("/miercoles/importar-excel")
+async def importar_excel_miercoles_endpoint(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not file.filename.lower().endswith((".xlsx", ".xlsm", ".xltx", ".xltm")):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un Excel válido")
+
+    contenido = await file.read()
+    archivo = servicios_miercoles.crear_archivo_miercoles(db, file.filename)
+
+    try:
+        procesadas, diagnostico = servicios_miercoles.importar_excel_miercoles(db, archivo.id, contenido)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo procesar el archivo: {e}")
+
+    # --- TEMPORAL: conteo por lotería para diagnóstico ---
+    from collections import Counter
+    conteo_por_loteria = Counter(loteria for loteria, _ in procesadas)
+
+    return {
+        "mensaje": f"{len(procesadas)} filas importadas, {len(diagnostico)} filas omitidas",
+        "conteo_por_loteria": dict(conteo_por_loteria),  # <-- nuevo
+        "archivo_id": archivo.id,
+        "omitidas": diagnostico,  # <-- sin el [:20], quiero verlas TODAS
+        "vista": servicios_miercoles.construir_vista_miercoles(db),
+    }
+@app.get("/miercoles/historial/{loteria}")
+def obtener_historial_miercoles(loteria: str, db: Session = Depends(get_db)):
+    resultados = (
+        db.query(models_miercoles.ResultadoMiercoles)
+        .filter(models_miercoles.ResultadoMiercoles.loteria == loteria)
+        .order_by(models_miercoles.ResultadoMiercoles.id)   # <-- orden real del excel
+        .all()
+    )
+
+    contador_por_numero = {}
+    filas = []
+
+    for r in resultados:
+        contador_por_numero[r.numero] = contador_por_numero.get(r.numero, 0) + 1
+        cantidad = r.cantidad if r.cantidad is not None else contador_por_numero[r.numero]
+
+        filas.append({
+            "id": r.id,
+            "fecha": r.fecha.isoformat(),
+            "numero": r.numero,
+            "cantidad": cantidad,
+            # solo se muestra si de verdad viene del excel (columnas N/O de Meta)
+            "fecha_pen": r.fecha_pen.isoformat() if r.fecha_pen else None,
+            "numero_pen": r.numero_pen,
+        })
+
+    return filas
+
+@app.get("/miercoles/vista")
+def obtener_vista_miercoles_endpoint(db: Session = Depends(get_db)):
+    return servicios_miercoles.construir_vista_miercoles(db)
 
  

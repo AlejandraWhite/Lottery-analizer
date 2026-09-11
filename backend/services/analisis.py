@@ -37,12 +37,23 @@ def eliminar_resultado(db: Session, resultado_id: int, dias_limite: int = 7):
     db.delete(resultado)
     db.commit()
 
-def normalizar_numero(numero: str) -> str:
-    return str(numero).strip().zfill(2)[-2:]
+def _a_texto_numerico(valor) -> str:
+    """Convierte el valor de una celda (int, float, str) a solo dígitos,
+    sin arrastrar el '.0' que openpyxl agrega a los floats."""
+    if isinstance(valor, float):
+        valor = int(round(valor))
+    texto = str(valor).strip()
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+    return "".join(ch for ch in texto if ch.isdigit()) or "0"
 
 
-def normalizar_numero_completo(numero: str) -> str:
-    return str(numero).strip().zfill(4)[-4:]
+def normalizar_numero(numero) -> str:
+    return _a_texto_numerico(numero).zfill(2)[-2:]
+
+
+def normalizar_numero_completo(numero) -> str:
+    return _a_texto_numerico(numero).zfill(4)[-4:]
 
 
 def obtener_ultimas_dos(numero_completo: str) -> str:

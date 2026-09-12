@@ -273,7 +273,43 @@ margin-right: calc(-50vw + 40px);
   height: 100%;
   background: #d4a93e;
 }
+/* Agregar en index.css */
 
+.aviso-scraping {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: #e6f4ea;   /* verde suave: todo bien */
+  border: 1px solid #b7dfc2;
+  font-size: 0.9rem;
+}
+
+.aviso-scraping.aviso-con-fallos {
+  background: #fdecea;   /* rojo suave: hubo al menos un fallo */
+  border-color: #f3b3ac;
+}
+
+.aviso-scraping-texto p {
+  margin: 2px 0;
+}
+
+.aviso-scraping-cerrar {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+}
+
+.aviso-scraping-cerrar:hover {
+  opacity: 1;
+}
 .ranking-cant {
   font-family: "IBM Plex Mono", monospace;
   font-variant-numeric: tabular-nums;

@@ -4,22 +4,26 @@ import {
   obtenerVistaExcel,
   importarExcel,
   sincronizarLoteria,
-  eliminarResultado
+  eliminarResultado,
+  obtenerEstadoScraping,
 } from "./api";
 import TablaAnalisis from "./components/TablaAnalisis";
 import TablaExcel from "./components/TablaExcel";
 import GestorResultados from "./components/GestorResultados";
 import PantallaMiercoles from "./components/PantallaMiercoles";
+import PantallaViernes from "./components/PantallaViernes";
+import AvisoScraping from "./components/AvisoScraping";
 import "./index.css";
 
 export default function App() {
   const [datos, setDatos] = useState([]);
   const [vistaExcel, setVistaExcel] = useState(null);
-  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel" | "miercoles"
+  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel" | "miercoles" | "viernes"
   const [cargando, setCargando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [orden, setOrden] = useState("terminacion");
+  const [estadoScraping, setEstadoScraping] = useState(null);
 
   async function cargarTodo() {
     setCargando(true);
@@ -39,6 +43,14 @@ export default function App() {
 
   useEffect(() => {
     cargarTodo();
+  }, []);
+
+  // Se consulta aparte de cargarTodo(): si esto falla, no debe tumbar
+  // la carga del resto de la app, solo no se muestra el aviso.
+  useEffect(() => {
+    obtenerEstadoScraping()
+      .then(setEstadoScraping)
+      .catch(() => {});
   }, []);
 
   async function manejarArchivo(evento) {
@@ -78,25 +90,27 @@ export default function App() {
       setSincronizando(false);
     }
   }
-  
+
   async function manejarEliminarResultado(id) {
-  setCargando(true);
-  setMensaje("");
-  try {
-    const data = await eliminarResultado(id);
-    setMensaje(data.mensaje);
-    setDatos(data.analisis);
-    setVistaExcel(data.vista_excel);
-  } catch (e) {
-    setMensaje(e.message);
-  } finally {
-    setCargando(false);
+    setCargando(true);
+    setMensaje("");
+    try {
+      const data = await eliminarResultado(id);
+      setMensaje(data.mensaje);
+      setDatos(data.analisis);
+      setVistaExcel(data.vista_excel);
+    } catch (e) {
+      setMensaje(e.message);
+    } finally {
+      setCargando(false);
+    }
   }
-}
 
   return (
     <div className="contenedor">
       <h1>Lottery Analyzer</h1>
+
+      <AvisoScraping estado={estadoScraping} />
 
       <div className="barra-superior">
         <label className="subir-archivo">
@@ -113,25 +127,31 @@ export default function App() {
         </button>
 
         <div className="pestanas">
-  <button
-    className={ventana === "resumen" ? "activa" : ""}
-    onClick={() => setVentana("resumen")}
-  >
-    Resumen
-  </button>
-  <button
-    className={ventana === "excel" ? "activa" : ""}
-    onClick={() => setVentana("excel")}
-  >
-    Vista columnas
-  </button>
-  <button
-    className={ventana === "miercoles" ? "activa" : ""}
-    onClick={() => setVentana("miercoles")}
-  >
-    Miércoles
-  </button>
-</div>
+          <button
+            className={ventana === "resumen" ? "activa" : ""}
+            onClick={() => setVentana("resumen")}
+          >
+            Resumen
+          </button>
+          <button
+            className={ventana === "excel" ? "activa" : ""}
+            onClick={() => setVentana("excel")}
+          >
+            Vista columnas
+          </button>
+          <button
+            className={ventana === "miercoles" ? "activa" : ""}
+            onClick={() => setVentana("miercoles")}
+          >
+            Miércoles
+          </button>
+          <button
+            className={ventana === "viernes" ? "activa" : ""}
+            onClick={() => setVentana("viernes")}
+          >
+            Viernes
+          </button>
+        </div>
         {ventana === "resumen" && (
           <select value={orden} onChange={(e) => setOrden(e.target.value)}>
             <option value="terminacion">Ordenar por terminación</option>
@@ -141,26 +161,28 @@ export default function App() {
       </div>
 
       <GestorResultados
-  onResultado={(data) => {
-    setDatos(data.analisis);
-    setVistaExcel(data.vista_excel);
-  }}
-/>
+        onResultado={(data) => {
+          setDatos(data.analisis);
+          setVistaExcel(data.vista_excel);
+        }}
+      />
 
       {mensaje && <p className="mensaje">{mensaje}</p>}
       {cargando && <p className="cargando">Cargando...</p>}
 
       {ventana === "resumen" ? (
-  <TablaAnalisis datos={datos} orden={orden} />
-) : ventana === "excel" ? (
-  <TablaExcel
-    vista={vistaExcel}
-    onEliminar={manejarEliminarResultado}
-    cargando={cargando}
-  />
-) : (
-  <PantallaMiercoles />
-)}
+        <TablaAnalisis datos={datos} orden={orden} />
+      ) : ventana === "excel" ? (
+        <TablaExcel
+          vista={vistaExcel}
+          onEliminar={manejarEliminarResultado}
+          cargando={cargando}
+        />
+      ) : ventana === "miercoles" ? (
+        <PantallaMiercoles />
+      ) : (
+        <PantallaViernes />
+      )}
     </div>
   );
 }

@@ -8,8 +8,11 @@ from io import BytesIO
 from pydantic import BaseModel
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from scrapers.orquestador import sincronizar_desde_scraping, sincronizar_historico_desde_scraping
 import models_miercoles  
 import crud
+import models_viernes
+import models_scraping
 from sqlalchemy import text
 from database import SessionLocal
 from services.analisis import (
@@ -26,12 +29,14 @@ from services.analisis import (
     ResultadoNoEncontrado,       # <- nuevo
     ResultadoDemasiadoAntiguo, 
 )
+  
+from services import viernes as servicios_viernes
 from services import miercoles as servicios_miercoles
 from apscheduler.schedulers.background import BackgroundScheduler
+
  
 
 app = FastAPI()
-from fastapi.middleware.cors import CORSMiddleware
  
 frontend_url = os.getenv("FRONTEND_URL")
  
@@ -112,6 +117,14 @@ def crear_resultado_manual_miercoles(
         "mensaje": "Resultado agregado correctamente",
         "vista": servicios_miercoles.construir_vista_miercoles(db),
     }
+
+
+class ResultadoManualViernesIn(BaseModel):
+    fecha: str          # admite "YYYY-MM-DD" o "DD/MM/YYYY"
+    numero: str
+    loteria: str 
+
+    
 # =========================================================
 # INICIO
 # =========================================================
@@ -399,7 +412,14 @@ def obtener_analisis(db: Session = Depends(get_db)):
 
 scheduler = BackgroundScheduler()
  
- 
+def tarea_sincronizacion_scraping():
+    db = SessionLocal()
+    try:
+        nuevos, reporte = sincronizar_desde_scraping(db)
+        print(f"[scraping] {len(nuevos)} resultados nuevos — {reporte.resumen_texto()}")
+    finally:
+        db.close()
+
 def tarea_sincronizacion_diaria():
     db = SessionLocal()
     try:
@@ -411,16 +431,58 @@ def tarea_sincronizacion_diaria():
  
 @app.on_event("startup")
 def iniciar_scheduler():
-    # Corre todos los días a las 7:00 a.m. — ajusta la hora si quieres
     scheduler.add_job(tarea_sincronizacion_diaria, "cron", hour=7, minute=0)
+    scheduler.add_job(tarea_sincronizacion_scraping, "cron", hour=7, minute=15)
     scheduler.start()
+
  
  
 @app.on_event("shutdown")
 def detener_scheduler():
     scheduler.shutdown()
 
+
+@app.post("/scrapers/sincronizar")
+def sincronizar_scraping_manual(db: Session = Depends(get_db)):
+    nuevos, reporte = sincronizar_historico_desde_scraping(db, dias_atras=60)
+
+    analisis = construir_analisis_completo(db)
+    vista = construir_vista_excel(db)
+
+    respuesta = {
+        "mensaje": f"{len(nuevos)} resultados nuevos sincronizados por scraping",
+        "loterias_ok": reporte.exitosos,
+        "loterias_fallidas": reporte.fallidos,
+        "analisis": list(analisis.values()),
+        "vista_excel": vista,
+    }
+
+    if reporte.hubo_fallos:
+        respuesta["advertencia"] = (
+            f"No se pudo leer el resultado de: {', '.join(reporte.fallidos)}. "
+            "Revisa esos scrapers (sitio caído o cambió el HTML)."
+        )
+
+    return respuesta
  
+
+@app.get("/scrapers/estado")
+def obtener_estado_scraping(db: Session = Depends(get_db)):
+    fila = (
+        db.query(models_scraping.EstadoUltimaCorridaScraping)
+        .order_by(models_scraping.EstadoUltimaCorridaScraping.id.desc())
+        .first()
+    )
+ 
+    if not fila:
+        return {"hay_datos": False}
+ 
+    return {
+        "hay_datos": True,
+        "fecha_ejecucion": fila.fecha_ejecucion.isoformat(),
+        "loterias_ok": fila.loterias_ok.split(",") if fila.loterias_ok else [],
+        "loterias_fallidas": fila.loterias_fallidas.split(",") if fila.loterias_fallidas else [],
+    }
  
 @app.post("/api-loterias/sincronizar")
 def sincronizar_manual(db: Session = Depends(get_db)):
@@ -567,5 +629,82 @@ def obtener_historial_miercoles(loteria: str, db: Session = Depends(get_db)):
 @app.get("/miercoles/vista")
 def obtener_vista_miercoles_endpoint(db: Session = Depends(get_db)):
     return servicios_miercoles.construir_vista_miercoles(db)
+
+
+@app.post("/viernes/manual")
+def crear_resultado_manual_viernes(
+    datos: ResultadoManualViernesIn,
+    db: Session = Depends(get_db),
+):
+    try:
+        servicios_viernes.registrar_resultado_manual_viernes(
+            db, datos.loteria, datos.fecha, datos.numero
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {
+        "mensaje": "Resultado agregado correctamente",
+        "vista": servicios_viernes.construir_vista_viernes(db),
+    }
+
+
+@app.post("/viernes/importar-excel")
+async def importar_excel_viernes_endpoint(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not file.filename.lower().endswith((".xlsx", ".xlsm", ".xltx", ".xltm")):
+        raise HTTPException(status_code=400, detail="El archivo debe ser un Excel válido")
+
+    contenido = await file.read()
+    archivo = servicios_viernes.crear_archivo_viernes(db, file.filename)
+
+    try:
+        procesadas, diagnostico = servicios_viernes.importar_excel_viernes(db, archivo.id, contenido)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo procesar el archivo: {e}")
+
+    from collections import Counter
+    conteo_por_loteria = Counter(loteria for loteria, _ in procesadas)
+
+    return {
+        "mensaje": f"{len(procesadas)} filas importadas, {len(diagnostico)} filas omitidas",
+        "conteo_por_loteria": dict(conteo_por_loteria),
+        "archivo_id": archivo.id,
+        "omitidas": diagnostico,
+        "vista": servicios_viernes.construir_vista_viernes(db),
+    }
+
+
+@app.get("/viernes/historial/{loteria}")
+def obtener_historial_viernes(loteria: str, db: Session = Depends(get_db)):
+    resultados = (
+        db.query(models_viernes.ResultadoViernes)
+        .filter(models_viernes.ResultadoViernes.loteria == loteria)
+        .order_by(models_viernes.ResultadoViernes.id)   # <-- orden real del excel
+        .all()
+    )
+
+    contador_por_numero = {}
+    filas = []
+
+    for r in resultados:
+        contador_por_numero[r.numero] = contador_por_numero.get(r.numero, 0) + 1
+        cantidad = r.cantidad if r.cantidad is not None else contador_por_numero[r.numero]
+
+        filas.append({
+            "id": r.id,
+            "fecha": r.fecha.isoformat(),
+            "numero": r.numero,
+            "cantidad": cantidad,
+        })
+
+    return filas
+
+
+@app.get("/viernes/vista")
+def obtener_vista_viernes_endpoint(db: Session = Depends(get_db)):
+    return servicios_viernes.construir_vista_viernes(db)
 
  

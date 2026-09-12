@@ -760,3 +760,42 @@ def revertir_registro_resultado(db: Session, resultado: Resultado):
         estado.antepenultima_id = None
 
     decrementar_contador(db, terminacion)
+
+
+    # analisis.py
+def existe_resultado_global(db: Session, fecha, numero_completo: str) -> bool:
+    """
+    Antes de insertar en la tabla general (la que alimenta vista
+    columnas) solo nos importa fecha + número completo, NO la
+    lotería. Si la misma jugada llega por dos vías con una etiqueta
+    de lotería distinta, no debe registrarse dos veces — eso era lo
+    que duplicaba última/penúltima/tercera.
+    """
+    return (
+        db.query(Resultado)
+        .filter(Resultado.fecha == fecha, Resultado.numero_completo == numero_completo)
+        .first()
+        is not None
+    )
+
+
+def reconstruir_estado_terminacion(db: Session):
+    db.query(EstadoTerminacion).delete()
+    db.query(ContadorTerminacion).delete()
+    db.flush()
+
+    resultados = (
+        db.query(Resultado)
+        .order_by(Resultado.fecha.asc(), Resultado.id.asc())
+        .all()
+    )
+
+    vistos = set()
+    for resultado in resultados:
+        clave = (resultado.fecha, resultado.numero_completo)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        registrar_nuevo_resultado(db, resultado)
+
+    db.commit()

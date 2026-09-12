@@ -1,3 +1,4 @@
+
 """
 Contrato base para los scrapers de loterías.
 
@@ -12,8 +13,8 @@ solo se rompe ESA clase. Las otras 11 siguen funcionando.
 Por qué Playwright para todos (y no requests+bs4 para "los fáciles"):
 - Medellín necesita JS renderizado -> requests no sirve.
 - Meta bloqueó requests por bot-detection -> un navegador real (headless)
-  suele pasar esa barrera porque no es un fingerprint tan obvio como el
-  de la librería requests.
+  suele pasar esa barrera porque no es un fingerprint tan obvio como
+  el de la librería requests.
 - Mantener un solo patrón para las 12 loterías es más simple que tener
   dos técnicas distintas conviviendo.
 
@@ -55,13 +56,35 @@ class LoteriaScraper(ABC):
     nombre_loteria: str = "SIN_NOMBRE"
     url: str = ""
 
+    # Días de sorteo en formato ISO:
+    # lunes=1 ... domingo=7.
+    # None significa que el scraper no tiene un calendario específico
+    # definido y, por tanto, puede ejecutarse cualquier día.
+    dias_sorteo = None
+
+    def obtener_historico(self, max_sorteos: int = 30):
+        """
+        Fallback por defecto: si la subclase no tiene una fuente de
+        histórico real, devolvemos el último resultado (vía
+        obtener_ultimo_resultado) como lista de un solo elemento, para
+        que al menos quede sincronizado con lo más reciente. Las
+        subclases con fuente de histórico real (ver
+        ResultadoDeLaLoteriaScraper) sobreescriben este método.
+        """
+        try:
+            ultimo = self.obtener_ultimo_resultado(contexto=None)
+        except Exception:
+            logger.exception("Fallo trayendo último resultado de %s (%s)", self.nombre_loteria, self.url)
+            return []
+        return [ultimo] if ultimo else []
+
     @abstractmethod
     def obtener_ultimo_resultado(self, contexto: "BrowserContext") -> Optional[ResultadoScrapeado]:
         """
         Recibe un BrowserContext de Playwright ya abierto (compartido entre
         todos los scrapers) y debe devolver el resultado del último sorteo
         publicado, o None si no se pudo obtener (sitio caído, bot-detection
-        más agresivo de lo esperado, cambio de HTML, etc).
+        más agresivo de lo esperado, cambio de HTML, etc). 
 
         IMPORTANTE: nunca debe lanzar una excepción no controlada — el
         orquestador espera que cada scraper maneje sus propios errores y
@@ -88,3 +111,4 @@ USER_AGENT_NAVEGADOR = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 )
+

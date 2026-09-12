@@ -407,3 +407,30 @@ def construir_vista_miercoles(db: Session):
         vista[loteria] = filas
 
     return vista
+
+
+NOMBRE_ARCHIVO_SINCRONIZACION_MIERCOLES = "Sincronización automática (scraping)"
+
+
+def obtener_o_crear_archivo_sincronizacion_miercoles(db: Session) -> ArchivoMiercoles:
+    archivo = (
+        db.query(ArchivoMiercoles)
+        .filter(ArchivoMiercoles.nombre == NOMBRE_ARCHIVO_SINCRONIZACION_MIERCOLES)
+        .first()
+    )
+    if archivo:
+        return archivo
+    return crear_archivo_miercoles(db, NOMBRE_ARCHIVO_SINCRONIZACION_MIERCOLES)
+
+
+def registrar_resultado_scraping_miercoles(db: Session, loteria: str, fecha, numero: str):
+    """
+    Punto de entrada para el orquestador de scraping. loteria debe ser
+    el nombre corto ("Meta" | "Valle" | "Manizales"); numero, las
+    últimas 2 cifras (terminación). Reutiliza la misma cadena
+    última/penúltima/antepenúltima que ya usa el resto de la app.
+    """
+    if loteria not in ("Meta", "Valle", "Manizales"):
+        return None
+    archivo = obtener_o_crear_archivo_sincronizacion_miercoles(db)
+    return _registrar_aparicion(db, archivo.id, loteria, fecha, numero)

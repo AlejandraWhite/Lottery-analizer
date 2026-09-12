@@ -253,8 +253,6 @@ def sincronizar_desde_scraping(db: Session) -> Tuple[List[Resultado], ReporteScr
         db.refresh(r)
 
     return nuevos, reporte
-
-
 # =========================================================
 # BACKFILL HISTÓRICO
 # =========================================================

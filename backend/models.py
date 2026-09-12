@@ -50,7 +50,6 @@ class Resultado(Base):
         back_populates="resultados"
     )
 
-
 class EstadoTerminacion(Base):
     __tablename__ = "estados_terminacion"
 
@@ -59,11 +58,11 @@ class EstadoTerminacion(Base):
     ultima_id = Column(Integer, ForeignKey("resultados.id"), nullable=True)
     penultima_id = Column(Integer, ForeignKey("resultados.id"), nullable=True)
     tercera_id = Column(Integer, ForeignKey("resultados.id"), nullable=True)
-    antepenultima_id = Column(Integer, ForeignKey("resultados.id"), nullable=True)  # NUEVO
+    antepenultima_id = Column(Integer, ForeignKey("resultados.id"), nullable=True)
 
-    tercera_actualizado_en = Column(DateTime, nullable=True)
+    tercera_actualizado_en = Column(DateTime, nullable=True)   # <- este sí se usa
 
     ultima = relationship("Resultado", foreign_keys=[ultima_id])
     penultima = relationship("Resultado", foreign_keys=[penultima_id])
     tercera = relationship("Resultado", foreign_keys=[tercera_id])
-    antepenultima = relationship("Resultado", foreign_keys=[antepenultima_id])  # NUEVO
+    antepenultima = relationship("Resultado", foreign_keys=[antepenultima_id])

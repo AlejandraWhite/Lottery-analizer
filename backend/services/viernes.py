@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from io import BytesIO
 
 from openpyxl import load_workbook
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from models_viernes import (
@@ -146,11 +147,25 @@ def _obtener_o_crear_resultado(db: Session, archivo_id: int, loteria: str, fecha
 def _eliminar_si_existe(db: Session, resultado_id):
     if resultado_id is None:
         return
+
+    todavia_referenciado = (
+        db.query(EstadoTerminacionViernes)
+        .filter(
+            or_(
+                EstadoTerminacionViernes.ultima_id == resultado_id,
+                EstadoTerminacionViernes.penultima_id == resultado_id,
+                EstadoTerminacionViernes.antepenultima_id == resultado_id,
+            )
+        )
+        .first()
+    )
+    if todavia_referenciado is not None:
+        return
+
     vieja = db.get(ResultadoViernes, resultado_id)
     if vieja is not None:
         db.delete(vieja)
         db.flush()
-
 
 # =========================================================
 # CADENA GENÉRICA (Risaralda / Medellín / Santander / ingreso manual)

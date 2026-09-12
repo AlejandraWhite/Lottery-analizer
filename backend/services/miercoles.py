@@ -134,14 +134,32 @@ def _obtener_o_crear_resultado(db: Session, archivo_id: int, loteria: str, fecha
     return resultado
 
 
+from sqlalchemy import or_
+
 def _eliminar_si_existe(db: Session, resultado_id):
     if resultado_id is None:
         return
+
+    todavia_referenciado = (
+        db.query(EstadoTerminacionMiercoles)
+        .filter(
+            or_(
+                EstadoTerminacionMiercoles.ultima_id == resultado_id,
+                EstadoTerminacionMiercoles.penultima_id == resultado_id,
+                EstadoTerminacionMiercoles.antepenultima_id == resultado_id,
+            )
+        )
+        .first()
+    )
+    if todavia_referenciado is not None:
+        # sigue siendo apuntada por algún estado (posible reprocesamiento
+        # o desorden cronológico en el scraping histórico); no la borramos
+        return
+
     vieja = db.get(ResultadoMiercoles, resultado_id)
     if vieja is not None:
         db.delete(vieja)
         db.flush()
-
 
 # =========================================================
 # CADENA GENÉRICA (Valle / Manizales / ingreso manual)

@@ -114,19 +114,6 @@ def obtener_o_crear_estado(db: Session, terminacion: str) -> EstadoTerminacion:
 
 
 def registrar_nuevo_resultado(db: Session, resultado: Resultado):
-    """
-    Se llama cada vez que cae un número NUEVO.
-
-        nuevo resultado          -> pasa a ser "última"
-        lo que era "última"      -> pasa a "penúltima" (orden cronológico
-                                     por fecha propia, ya funciona)
-                                     Y TAMBIÉN pasa a "tercera", pero ahí
-                                     se ubica al fondo (orden por momento
-                                     de desplazamiento, no por fecha)
-        lo que era "penúltima"   -> pasa a "antepenúltima" (orden
-                                     cronológico por fecha propia)
-        lo que era "antepenúltima" se descarta
-    """
     terminacion = resultado.numero
     estado = obtener_o_crear_estado(db, terminacion)
 
@@ -138,7 +125,6 @@ def registrar_nuevo_resultado(db: Session, resultado: Resultado):
 
     if anterior_ultima_id is not None:
         estado.tercera_id = anterior_ultima_id
-        estado.tercera_actualizado_en = datetime.now()
 
     estado.penultima_id = anterior_ultima_id
     estado.ultima_id = resultado.id
@@ -158,13 +144,7 @@ def analizar_numero(db: Session, numero: str):
         "penultima": convertir_resultado(estado.penultima) if estado else None,
         "tercera": convertir_resultado(estado.tercera) if estado else None,
         "antepenultima": convertir_resultado(estado.antepenultima) if estado else None,
-        "tercera_actualizado_en": (
-            estado.tercera_actualizado_en.isoformat()
-            if estado and estado.tercera_actualizado_en
-            else None
-        ),
     }
-
 def analizar_todos_los_numeros(db: Session):
     analisis = {}
     for i in range(100):
@@ -451,9 +431,7 @@ def importar_historico_excel(
 
         grupo 1 (B/C) -> "última"    por terminación
         grupo 2 (G/H) -> "penúltima" por terminación
-        grupo 3 (K/L) -> "tercera"   por terminación (se preserva el
-                          orden en que aparecen las filas del excel,
-                          NO se reordena por fecha)
+        grupo 3 (K/L) -> "tercera"   por terminación
     """
     wb = load_workbook(filename=BytesIO(contenido_excel), data_only=True)
     ws = wb.active
@@ -501,14 +479,11 @@ def importar_historico_excel(
         r = _guardar_resultado(fecha, numero_completo)
         resultados_penultima[obtener_ultimas_dos(numero_completo)] = r
 
-    # El orden de lectura de este grupo SÍ importa: se preserva como
-    # el orden de "tercera_actualizado_en"
     resultados_tercera = {}
-    orden_base = datetime.now()
-    for indice, (fecha, numero_completo) in enumerate(pares_tercera):
+    for fecha, numero_completo in pares_tercera:
         r = _guardar_resultado(fecha, numero_completo)
         terminacion = obtener_ultimas_dos(numero_completo)
-        resultados_tercera[terminacion] = (r, orden_base + timedelta(microseconds=indice))
+        resultados_tercera[terminacion] = r
 
     for i in range(100):
         terminacion = f"{i:02d}"
@@ -519,9 +494,7 @@ def importar_historico_excel(
         if terminacion in resultados_penultima:
             estado.penultima_id = resultados_penultima[terminacion].id
         if terminacion in resultados_tercera:
-            resultado_tercera, orden = resultados_tercera[terminacion]
-            estado.tercera_id = resultado_tercera.id
-            estado.tercera_actualizado_en = orden
+            estado.tercera_id = resultados_tercera[terminacion].id
 
     contadores_iniciales = _leer_tabla_amarilla(
         ws,
@@ -538,21 +511,16 @@ def importar_historico_excel(
 
     return nuevos
 
-
 # =========================================================
 # VISTA PARA EL FRONTEND
 # =========================================================
-def _construir_grupo(analisis: dict, clave_fecha_orden: str, clave_dato: str, incluir_cantidad: bool = False):
-    """Arma grupo_a (última) o grupo_b (penúltima), ordenados por su propia fecha."""
+def _construir_grupo(analisis: dict, clave_dato: str, incluir_cantidad: bool = False):
+    """Arma grupo_a/b/d ordenados por la fecha propia de cada posición."""
     filas = []
 
     for numero, dato in analisis.items():
         posicion = dato[clave_dato]
-        if posicion is None:
-            continue
-
-        fecha_orden = dato[clave_fecha_orden]
-        if fecha_orden is None:
+        if posicion is None or posicion["fecha"] is None:
             continue
 
         fila = {
@@ -565,25 +533,30 @@ def _construir_grupo(analisis: dict, clave_fecha_orden: str, clave_dato: str, in
         if incluir_cantidad:
             fila["cantidad"] = dato["veces_que_caen"]
 
-        filas.append((fecha_orden["fecha"], fila))
+        filas.append((posicion["fecha"], fila))
 
     filas.sort(key=lambda par: par[0])
     return [fila for _, fila in filas]
 
+
 def _construir_grupo_tercera(analisis: dict):
     """
-    Arma grupo_c: NO se ordena por la fecha del sorteo, sino por el
-    momento en que la terminación fue desplazada a esta posición —
-    lo más reciente queda abajo.
+    Se ordena por la fecha de 'última' de la MISMA terminación (no por
+    la fecha propia de 'tercera', ni por un timestamp de procesamiento).
+    Así, la fila i de esta columna siempre corresponde a la misma
+    terminación que la fila i de 'última', sin importar en qué orden
+    real se insertaron los datos en la base (histórico, sync diario,
+    manual, etc.).
     """
     filas = []
 
     for numero, dato in analisis.items():
         tercera = dato["tercera"]
-        if tercera is None:
+        ultima = dato["ultima"]
+        if tercera is None or ultima is None or ultima["fecha"] is None:
             continue
 
-        orden = dato["tercera_actualizado_en"] or ""
+        orden = ultima["fecha"]
 
         filas.append((orden, {
             "terminacion": numero,
@@ -599,10 +572,10 @@ def construir_vista_excel(db: Session):
     analisis = construir_analisis_completo(db)
 
     return {
-        "grupo_a": _construir_grupo(analisis, "ultima", "ultima", incluir_cantidad=True),
-        "grupo_b": _construir_grupo(analisis, "penultima", "penultima"),
+        "grupo_a": _construir_grupo(analisis, "ultima", incluir_cantidad=True),
+        "grupo_b": _construir_grupo(analisis, "penultima"),
         "grupo_c": _construir_grupo_tercera(analisis),
-        "grupo_d": _construir_grupo(analisis, "antepenultima", "antepenultima"),
+        "grupo_d": _construir_grupo(analisis, "antepenultima"),
         "tabla_amarilla": [
             {"terminacion": t, "cantidad": d["veces_que_caen"]}
             for t, d in sorted(
@@ -750,17 +723,18 @@ def revertir_registro_resultado(db: Session, resultado: Resultado):
         estado.penultima_id = estado.antepenultima_id
         estado.tercera_id = estado.antepenultima_id
         estado.tercera_actualizado_en = None
+        estado.tercera_orden = None
         estado.antepenultima_id = None
     elif estado.penultima_id == resultado.id:
         # penúltima y tercera son espejo del mismo resultado
         estado.penultima_id = None
         estado.tercera_id = None
         estado.tercera_actualizado_en = None
+        estado.tercera_orden = None
     elif estado.antepenultima_id == resultado.id:
         estado.antepenultima_id = None
 
     decrementar_contador(db, terminacion)
-
 
     # analisis.py
 def existe_resultado_global(db: Session, fecha, numero_completo: str) -> bool:

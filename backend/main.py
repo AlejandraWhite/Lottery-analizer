@@ -26,6 +26,7 @@ from services.analisis import (
     registrar_resultado_manual,
     obtener_resultados, 
     obtener_resultado_por_id,  
+    reconstruir_estado_terminacion,
     ResultadoNoEncontrado,       # <- nuevo
     ResultadoDemasiadoAntiguo, 
 )
@@ -94,6 +95,17 @@ def crear_resultado_manual(
         "vista_excel": vista,
     }
 
+
+@app.post("/debug/reconstruir-estado")
+def reconstruir_estado_endpoint(db: Session = Depends(get_db)):
+    reconstruir_estado_terminacion(db)
+    analisis = construir_analisis_completo(db)
+    vista = construir_vista_excel(db)
+    return {
+        "mensaje": "Estado de terminaciones reconstruido correctamente",
+        "analisis": list(analisis.values()),
+        "vista_excel": vista,
+    }
 
 class ResultadoManualMiercolesIn(BaseModel):
     fecha: str          # admite "YYYY-MM-DD" o "DD/MM/YYYY"

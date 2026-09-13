@@ -1,8 +1,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { importarExcelViernes, obtenerVistaViernes, agregarResultadoManualViernes } from "../api";
 import { formatearFechaMiercoles } from "../utils";
+import Resaltado from "./Resaltado";
 
-function TablaLoteria({ nombre, filas }) {
+function coincideTexto(valor, patron) {
+  if (!patron) return false;
+  return String(valor ?? "").toLowerCase().includes(patron.toLowerCase());
+}
+
+function TablaLoteria({ nombre, filas, busqueda, busquedaFecha }) {
   return (
     <div className="columna-grupo">
       <h3>{nombre}</h3>
@@ -18,21 +24,36 @@ function TablaLoteria({ nombre, filas }) {
             </tr>
           </thead>
           <tbody>
-            {filas.map((fila) => (
-              <tr key={fila.terminacion}>
-                <td className="num">{fila.terminacion}</td>
-                <td>{fila.cantidad}</td>
-                <td className="num">
-                  {fila.ultima ? `${formatearFechaMiercoles(fila.ultima.fecha)}` : "—"}
-                </td>
-                <td className="num">
-                  {fila.penultima ? `${formatearFechaMiercoles(fila.penultima.fecha)}` : "—"}
-                </td>
-                <td className="num">
-                  {fila.antepenultima ? `${formatearFechaMiercoles(fila.antepenultima.fecha)}` : "—"}
-                </td>
-              </tr>
-            ))}
+            {filas.map((fila, i) => {
+              const fechaUltima = fila.ultima ? formatearFechaMiercoles(fila.ultima.fecha) : "";
+              const fechaPenultima = fila.penultima ? formatearFechaMiercoles(fila.penultima.fecha) : "";
+              const fechaAntepenultima = fila.antepenultima ? formatearFechaMiercoles(fila.antepenultima.fecha) : "";
+
+              const coincide =
+                coincideTexto(fila.terminacion, busqueda) ||
+                coincideTexto(fechaUltima, busquedaFecha) ||
+                coincideTexto(fechaPenultima, busquedaFecha) ||
+                coincideTexto(fechaAntepenultima, busquedaFecha);
+
+              return (
+                <tr key={fila.terminacion} className={coincide ? "fila-coincide" : ""}>
+                  <td className="num celda-con-fila">
+                    <span className="fila-numero">{i + 1}</span>
+                    <Resaltado texto={fila.terminacion} busqueda={busqueda} />
+                  </td>
+                  <td>{fila.cantidad}</td>
+                  <td className="num">
+                    {fila.ultima ? <Resaltado texto={fechaUltima} busqueda={busquedaFecha} /> : "—"}
+                  </td>
+                  <td className="num">
+                    {fila.penultima ? <Resaltado texto={fechaPenultima} busqueda={busquedaFecha} /> : "—"}
+                  </td>
+                  <td className="num">
+                    {fila.antepenultima ? <Resaltado texto={fechaAntepenultima} busqueda={busquedaFecha} /> : "—"}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -40,7 +61,7 @@ function TablaLoteria({ nombre, filas }) {
   );
 }
 
-export default function PantallaViernes() {
+export default function PantallaViernes({ busqueda, busquedaFecha }) {
   const [archivo, setArchivo] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -139,9 +160,9 @@ export default function PantallaViernes() {
       {mensaje && <p className="mensaje">{mensaje}</p>}
 
       <div className="vista-miercoles">
-        <TablaLoteria nombre="RISARALDA" filas={risaralda} />
-        <TablaLoteria nombre="MEDELLÍN" filas={medellin} />
-        <TablaLoteria nombre="SANTANDER" filas={santander} />
+        <TablaLoteria nombre="RISARALDA" filas={risaralda} busqueda={busqueda} busquedaFecha={busquedaFecha} />
+        <TablaLoteria nombre="MEDELLÍN" filas={medellin} busqueda={busqueda} busquedaFecha={busquedaFecha} />
+        <TablaLoteria nombre="SANTANDER" filas={santander} busqueda={busqueda} busquedaFecha={busquedaFecha} />
       </div>
     </div>
   );

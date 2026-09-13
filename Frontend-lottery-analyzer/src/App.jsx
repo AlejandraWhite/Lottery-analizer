@@ -18,12 +18,14 @@ import "./index.css";
 export default function App() {
   const [datos, setDatos] = useState([]);
   const [vistaExcel, setVistaExcel] = useState(null);
-  const [ventana, setVentana] = useState("resumen"); // "resumen" | "excel" | "miercoles" | "viernes"
+  const [ventana, setVentana] = useState("resumen");
   const [cargando, setCargando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [orden, setOrden] = useState("terminacion");
   const [estadoScraping, setEstadoScraping] = useState(null);
+  const [busqueda, setBusqueda] = useState("");
+  const [busquedaFecha, setBusquedaFecha] = useState("");
 
   async function cargarTodo() {
     setCargando(true);
@@ -45,8 +47,6 @@ export default function App() {
     cargarTodo();
   }, []);
 
-  // Se consulta aparte de cargarTodo(): si esto falla, no debe tumbar
-  // la carga del resto de la app, solo no se muestra el aviso.
   useEffect(() => {
     obtenerEstadoScraping()
       .then(setEstadoScraping)
@@ -106,11 +106,43 @@ export default function App() {
     }
   }
 
+  function manejarBusqueda(valor) {
+    setBusqueda(valor.replace(/\D/g, "").slice(0, 4));
+  }
+
   return (
     <div className="contenedor">
       <h1>Lottery Analyzer</h1>
 
       <AvisoScraping estado={estadoScraping} />
+
+      <div className="barra-busqueda-global">
+        <input
+          type="text"
+          className="input-busqueda"
+          placeholder="Buscar número (1 a 4 cifras), ej: 7, 07, 072, 0725"
+          value={busqueda}
+          onChange={(e) => manejarBusqueda(e.target.value)}
+        />
+        {busqueda && (
+          <button className="limpiar-busqueda" onClick={() => setBusqueda("")}>
+            ✕
+          </button>
+        )}
+
+        <input
+          type="text"
+          className="input-busqueda"
+          placeholder="Buscar fecha, ej: 09/09 o 09/09/2026"
+          value={busquedaFecha}
+          onChange={(e) => setBusquedaFecha(e.target.value)}
+        />
+        {busquedaFecha && (
+          <button className="limpiar-busqueda" onClick={() => setBusquedaFecha("")}>
+            ✕
+          </button>
+        )}
+      </div>
 
       <div className="barra-superior">
         <label className="subir-archivo">
@@ -137,7 +169,7 @@ export default function App() {
             className={ventana === "excel" ? "activa" : ""}
             onClick={() => setVentana("excel")}
           >
-            Vista columnas
+            All loteries
           </button>
           <button
             className={ventana === "miercoles" ? "activa" : ""}
@@ -171,17 +203,24 @@ export default function App() {
       {cargando && <p className="cargando">Cargando...</p>}
 
       {ventana === "resumen" ? (
-        <TablaAnalisis datos={datos} orden={orden} />
+        <TablaAnalisis
+          datos={datos}
+          orden={orden}
+          busqueda={busqueda}
+          busquedaFecha={busquedaFecha}
+        />
       ) : ventana === "excel" ? (
         <TablaExcel
           vista={vistaExcel}
           onEliminar={manejarEliminarResultado}
           cargando={cargando}
+          busqueda={busqueda}
+          busquedaFecha={busquedaFecha}
         />
       ) : ventana === "miercoles" ? (
-        <PantallaMiercoles />
+        <PantallaMiercoles busqueda={busqueda} busquedaFecha={busquedaFecha} />
       ) : (
-        <PantallaViernes />
+        <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} />
       )}
     </div>
   );

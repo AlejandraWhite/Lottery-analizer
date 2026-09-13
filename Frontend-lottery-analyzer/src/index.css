@@ -208,6 +208,23 @@ margin-right: calc(-50vw + 40px);
   border-bottom: 1px solid #e5e5e5;
 }
 
+.celda-con-fila {
+  position: relative;
+  padding-left: 18px !important;
+}
+
+.fila-numero {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  font-size: 9px;
+  line-height: 1;
+  color: #1916e6;
+  background: rgba(247, 245, 245, 0.986);
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+
 .tabla-grupo td.num {
   font-family: "IBM Plex Mono", monospace;
   font-variant-numeric: tabular-nums;
@@ -238,6 +255,18 @@ margin-right: calc(-50vw + 40px);
   text-align: center;
 }
 
+
+.resaltado {
+  background-color: #d65bd0;
+  color: #1a1a1a;
+  padding: 0 2px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.fila-coincide {
+  background-color: rgba(147, 9, 240, 0.18);
+}
 /* Panel resumen: ranking con barra, en vez de tabla */
 
 .ranking {

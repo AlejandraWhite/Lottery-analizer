@@ -16,14 +16,14 @@ export function formatearFechaMiercoles(fechaIso) {
 
 export function formatearFecha(fechaIso) {
   if (!fechaIso) return "";
-  const fecha = new Date(fechaIso);
+  const [anio, mes, dia] = fechaIso.split("-").map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
   return fecha.toLocaleDateString("es-CO", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
   });
 }
-
 
 export function esReciente(fechaIso, dias = 7) {
   if (!fechaIso) return false;

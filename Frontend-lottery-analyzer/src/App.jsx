@@ -27,6 +27,7 @@ export default function App() {
   const [estadoScraping, setEstadoScraping] = useState(null);
   const [busqueda, setBusqueda] = useState("");
   const [busquedaFecha, setBusquedaFecha] = useState("");
+  const [modoBusqueda, setModoBusqueda] = useState("cualquiera"); // "cualquiera" | "ultimas2"
 
   async function cargarTodo() {
     setCargando(true);
@@ -118,33 +119,44 @@ export default function App() {
 
       <AvisoScraping estado={estadoScraping} />
 
-      <div className="barra-busqueda-global">
-        <input
-          type="text"
-          className="input-busqueda"
-          placeholder="Buscar número (1 a 4 cifras), ej: 7, 07, 072, 0725"
-          value={busqueda}
-          onChange={(e) => manejarBusqueda(e.target.value)}
-        />
-        {busqueda && (
-          <button className="limpiar-busqueda" onClick={() => setBusqueda("")}>
-            ✕
-          </button>
-        )}
+     <div className="barra-busqueda-global">
+  <input
+    type="text"
+    className="input-busqueda"
+    placeholder="Buscar número (1 a 4 cifras), ej: 7, 07, 072, 0725"
+    value={busqueda}
+    onChange={(e) => manejarBusqueda(e.target.value)}
+  />
+  {busqueda && (
+    <button className="limpiar-busqueda" onClick={() => setBusqueda("")}>
+      ✕
+    </button>
+  )}
 
-        <input
-          type="text"
-          className="input-busqueda"
-          placeholder="Buscar fecha, ej: 09/09 o 09/09/2026"
-          value={busquedaFecha}
-          onChange={(e) => setBusquedaFecha(e.target.value)}
-        />
-        {busquedaFecha && (
-          <button className="limpiar-busqueda" onClick={() => setBusquedaFecha("")}>
-            ✕
-          </button>
-        )}
-      </div>
+  <label className="toggle-modo-busqueda">
+    <input
+      type="checkbox"
+      checked={modoBusqueda === "ultimas2"}
+      onChange={(e) =>
+        setModoBusqueda(e.target.checked ? "ultimas2" : "cualquiera")
+      }
+    />
+    Solo últimas 2 cifras
+  </label>
+
+  <input
+    type="text"
+    className="input-busqueda"
+    placeholder="Buscar fecha, ej: 09/09 o 09/09/2026"
+    value={busquedaFecha}
+    onChange={(e) => setBusquedaFecha(e.target.value)}
+  />
+  {busquedaFecha && (
+    <button className="limpiar-busqueda" onClick={() => setBusquedaFecha("")}>
+      ✕
+    </button>
+  )}
+</div>
 
       <div className="barra-superior">
         <label className="subir-archivo">
@@ -204,26 +216,28 @@ export default function App() {
       {mensaje && <p className="mensaje">{mensaje}</p>}
       {cargando && <p className="cargando">Cargando...</p>}
 
-      {ventana === "resumen" ? (
-        <TablaAnalisis
-          datos={datos}
-          orden={orden}
-          busqueda={busqueda}
-          busquedaFecha={busquedaFecha}
-        />
-      ) : ventana === "excel" ? (
-        <TablaExcel
-          vista={vistaExcel}
-          onEliminar={manejarEliminarResultado}
-          cargando={cargando}
-          busqueda={busqueda}
-          busquedaFecha={busquedaFecha}
-        />
-      ) : ventana === "miercoles" ? (
-        <PantallaMiercoles busqueda={busqueda} busquedaFecha={busquedaFecha} />
-      ) : (
-        <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} />
-      )}
+     {ventana === "resumen" ? (
+  <TablaAnalisis
+    datos={datos}
+    orden={orden}
+    busqueda={busqueda}
+    busquedaFecha={busquedaFecha}
+    modoBusqueda={modoBusqueda}
+  />
+) : ventana === "excel" ? (
+  <TablaExcel
+    vista={vistaExcel}
+    onEliminar={manejarEliminarResultado}
+    cargando={cargando}
+    busqueda={busqueda}
+    busquedaFecha={busquedaFecha}
+    modoBusqueda={modoBusqueda}
+  />
+) : ventana === "miercoles" ? (
+  <PantallaMiercoles busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) : (
+  <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+)}
     </div>
     </ErrorBoundary>
   );

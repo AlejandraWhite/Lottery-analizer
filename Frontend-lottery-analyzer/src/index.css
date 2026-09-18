@@ -549,7 +549,19 @@ h1 {
 .fila-eliminable {
   cursor: pointer;
 }
+.toggle-modo-busqueda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #4b5563;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
+.toggle-modo-busqueda input {
+  cursor: pointer;
+}
 .fila-eliminable:hover {
   background: rgba(212, 169, 62, 0.08);
 }

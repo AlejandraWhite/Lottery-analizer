@@ -2,9 +2,15 @@ import { useState } from "react";
 import { formatearFecha, esReciente } from "../utils";
 import Resaltado from "./Resaltado";
 
-function coincideTexto(valor, patron) {
+function coincideTexto(valor, patron, modo = "cualquiera") {
   if (!patron) return false;
-  return String(valor ?? "").toLowerCase().includes(patron.toLowerCase());
+  const str = String(valor ?? "").toLowerCase();
+  const pat = patron.toLowerCase();
+
+  if (modo === "ultimas2") {
+    return str.endsWith(pat);
+  }
+  return str.includes(pat);
 }
 
 function IconoBasura({ onClick, disabled }) {
@@ -34,6 +40,7 @@ function FilaUltima({
   cargando,
   busqueda,
   busquedaFecha,
+  modoBusqueda,
   numero,
   activa,
   onClickNumero,
@@ -41,8 +48,8 @@ function FilaUltima({
   const eliminable = esReciente(fila.creado_en);
   const fechaFormateada = formatearFecha(fila.fecha);
   const coincide =
-    coincideTexto(fila.terminacion, busqueda) ||
-    coincideTexto(fila.numero_completo, busqueda) ||
+    coincideTexto(fila.terminacion, busqueda, modoBusqueda) ||
+    coincideTexto(fila.numero_completo, busqueda, modoBusqueda) ||
     coincideTexto(fechaFormateada, busquedaFecha);
 
   const mostrarPapelera = activa && eliminable;
@@ -68,20 +75,21 @@ function FilaUltima({
         <Resaltado texto={fechaFormateada} busqueda={busquedaFecha} />
       </td>
       <td className="num">
-        <Resaltado texto={fila.numero_completo} busqueda={busqueda} />
+        <Resaltado texto={fila.numero_completo} busqueda={busqueda} modo={modoBusqueda} />
       </td>
       <td className="num">
-        <Resaltado texto={fila.terminacion} busqueda={busqueda} />
+        <Resaltado texto={fila.terminacion} busqueda={busqueda} modo={modoBusqueda} />
       </td>
       <td className="num">{fila.cantidad}</td>
     </tr>
   );
 }
-function Fila({ fila, busqueda, busquedaFecha, numero }) {
+
+function Fila({ fila, busqueda, busquedaFecha, modoBusqueda, numero }) {
   const fechaFormateada = formatearFecha(fila.fecha);
   const coincide =
-    coincideTexto(fila.terminacion, busqueda) ||
-    coincideTexto(fila.numero_completo, busqueda) ||
+    coincideTexto(fila.terminacion, busqueda, modoBusqueda) ||
+    coincideTexto(fila.numero_completo, busqueda, modoBusqueda) ||
     coincideTexto(fechaFormateada, busquedaFecha);
 
   return (
@@ -91,16 +99,23 @@ function Fila({ fila, busqueda, busquedaFecha, numero }) {
         <Resaltado texto={fechaFormateada} busqueda={busquedaFecha} />
       </td>
       <td className="num">
-        <Resaltado texto={fila.numero_completo} busqueda={busqueda} />
+        <Resaltado texto={fila.numero_completo} busqueda={busqueda} modo={modoBusqueda} />
       </td>
       <td className="num">
-        <Resaltado texto={fila.terminacion} busqueda={busqueda} />
+        <Resaltado texto={fila.terminacion} busqueda={busqueda} modo={modoBusqueda} />
       </td>
     </tr>
   );
 }
 
-export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busquedaFecha }) {
+export default function TablaExcel({
+  vista,
+  onEliminar,
+  cargando,
+  busqueda,
+  busquedaFecha,
+  modoBusqueda = "cualquiera",
+}) {
   const [filaActivaId, setFilaActivaId] = useState(null);
 
   if (!vista) return null;
@@ -135,6 +150,7 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
                   cargando={cargando}
                   busqueda={busqueda}
                   busquedaFecha={busquedaFecha}
+                  modoBusqueda={modoBusqueda}
                   numero={i + 1}
                   activa={filaActivaId === fila.id}
                   onClickNumero={() => manejarClickNumero(fila)}
@@ -154,7 +170,14 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
             </thead>
             <tbody>
               {vista.grupo_b.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                <Fila
+                  key={i}
+                  fila={fila}
+                  busqueda={busqueda}
+                  busquedaFecha={busquedaFecha}
+                  modoBusqueda={modoBusqueda}
+                  numero={i + 1}
+                />
               ))}
             </tbody>
           </table>
@@ -170,7 +193,14 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
             </thead>
             <tbody>
               {vista.grupo_c.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                <Fila
+                  key={i}
+                  fila={fila}
+                  busqueda={busqueda}
+                  busquedaFecha={busquedaFecha}
+                  modoBusqueda={modoBusqueda}
+                  numero={i + 1}
+                />
               ))}
             </tbody>
           </table>
@@ -186,7 +216,14 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
             </thead>
             <tbody>
               {vista.grupo_d.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                <Fila
+                  key={i}
+                  fila={fila}
+                  busqueda={busqueda}
+                  busquedaFecha={busquedaFecha}
+                  modoBusqueda={modoBusqueda}
+                  numero={i + 1}
+                />
               ))}
             </tbody>
           </table>
@@ -198,14 +235,14 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
         <div className="tabla-scroll">
           <ol className="ranking">
             {vista.tabla_amarilla.map((fila) => {
-              const coincide = coincideTexto(fila.terminacion, busqueda);
+              const coincide = coincideTexto(fila.terminacion, busqueda, modoBusqueda);
               return (
                 <li
                   key={fila.terminacion}
                   className={`ranking-fila${coincide ? " fila-coincide" : ""}`}
                 >
                   <span className="ranking-num">
-                    <Resaltado texto={fila.terminacion} busqueda={busqueda} />
+                    <Resaltado texto={fila.terminacion} busqueda={busqueda} modo={modoBusqueda} />
                   </span>
                   <span className="ranking-barra-fondo">
                     <span

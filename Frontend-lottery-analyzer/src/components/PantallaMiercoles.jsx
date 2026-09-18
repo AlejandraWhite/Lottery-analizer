@@ -3,12 +3,18 @@ import { importarExcelMiercoles, obtenerVistaMiercoles, agregarResultadoManualMi
 import { formatearFechaMiercoles } from "../utils";
 import Resaltado from "./Resaltado";
 
-function coincideTexto(valor, patron) {
+function coincideTexto(valor, patron, modo = "cualquiera") {
   if (!patron) return false;
-  return String(valor ?? "").toLowerCase().includes(patron.toLowerCase());
+  const str = String(valor ?? "").toLowerCase();
+  const pat = patron.toLowerCase();
+
+  if (modo === "ultimas2") {
+    return str.endsWith(pat);
+  }
+  return str.includes(pat);
 }
 
-function TablaLoteria({ nombre, filas, busqueda, busquedaFecha }) {
+function TablaLoteria({ nombre, filas, busqueda, busquedaFecha, modoBusqueda }) {
   return (
     <div className="columna-grupo">
       <h3>{nombre}</h3>
@@ -30,7 +36,7 @@ function TablaLoteria({ nombre, filas, busqueda, busquedaFecha }) {
               const fechaAntepenultima = fila.antepenultima ? formatearFechaMiercoles(fila.antepenultima.fecha) : "";
 
               const coincide =
-                coincideTexto(fila.terminacion, busqueda) ||
+                coincideTexto(fila.terminacion, busqueda, modoBusqueda) ||
                 coincideTexto(fechaUltima, busquedaFecha) ||
                 coincideTexto(fechaPenultima, busquedaFecha) ||
                 coincideTexto(fechaAntepenultima, busquedaFecha);
@@ -39,7 +45,7 @@ function TablaLoteria({ nombre, filas, busqueda, busquedaFecha }) {
                 <tr key={fila.terminacion} className={coincide ? "fila-coincide" : ""}>
                   <td className="num celda-con-fila">
                     <span className="fila-numero">{i + 1}</span>
-                    <Resaltado texto={fila.terminacion} busqueda={busqueda} />
+                    <Resaltado texto={fila.terminacion} busqueda={busqueda} modo={modoBusqueda} />
                   </td>
                   <td>{fila.cantidad}</td>
                   <td className="num">
@@ -61,7 +67,7 @@ function TablaLoteria({ nombre, filas, busqueda, busquedaFecha }) {
   );
 }
 
-export default function PantallaMiercoles({ busqueda, busquedaFecha }) {
+export default function PantallaMiercoles({ busqueda, busquedaFecha, modoBusqueda = "cualquiera" }) {
   const [archivo, setArchivo] = useState(null);
   const [subiendo, setSubiendo] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -160,9 +166,9 @@ export default function PantallaMiercoles({ busqueda, busquedaFecha }) {
       {mensaje && <p className="mensaje">{mensaje}</p>}
 
       <div className="vista-miercoles">
-        <TablaLoteria nombre="META" filas={meta} busqueda={busqueda} busquedaFecha={busquedaFecha} />
-        <TablaLoteria nombre="VALLE" filas={valle} busqueda={busqueda} busquedaFecha={busquedaFecha} />
-        <TablaLoteria nombre="MANIZALES" filas={manizales} busqueda={busqueda} busquedaFecha={busquedaFecha} />
+        <TablaLoteria nombre="META" filas={meta} busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+        <TablaLoteria nombre="VALLE" filas={valle} busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+        <TablaLoteria nombre="MANIZALES" filas={manizales} busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
       </div>
     </div>
   );

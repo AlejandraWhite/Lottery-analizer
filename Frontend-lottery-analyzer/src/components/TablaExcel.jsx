@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatearFecha, esReciente } from "../utils";
 import Resaltado from "./Resaltado";
 
@@ -27,7 +28,16 @@ function IconoBasura({ onClick, disabled }) {
   );
 }
 
-function FilaUltima({ fila, onEliminar, cargando, busqueda, busquedaFecha, numero }) {
+function FilaUltima({
+  fila,
+  onEliminar,
+  cargando,
+  busqueda,
+  busquedaFecha,
+  numero,
+  activa,
+  onClickNumero,
+}) {
   const eliminable = esReciente(fila.creado_en);
   const fechaFormateada = formatearFecha(fila.fecha);
   const coincide =
@@ -35,11 +45,22 @@ function FilaUltima({ fila, onEliminar, cargando, busqueda, busquedaFecha, numer
     coincideTexto(fila.numero_completo, busqueda) ||
     coincideTexto(fechaFormateada, busquedaFecha);
 
+  const mostrarPapelera = activa && eliminable;
+
   return (
-    <tr className={coincide ? "fila-coincide" : ""}>
+    <tr
+      className={`${coincide ? "fila-coincide" : ""} ${mostrarPapelera ? "fila-activa" : ""} ${eliminable ? "fila-eliminable" : ""}`}
+      onClick={eliminable ? onClickNumero : undefined}
+    >
       <td className="col-accion">
-        {eliminable && (
-          <IconoBasura onClick={() => onEliminar(fila.id)} disabled={cargando} />
+        {mostrarPapelera && (
+          <IconoBasura
+            onClick={(e) => {
+              e.stopPropagation(); // evita que el clic en la papelera dispare también el onClick de la fila
+              onEliminar(fila.id);
+            }}
+            disabled={cargando}
+          />
         )}
       </td>
       <td className="celda-con-fila">
@@ -56,7 +77,6 @@ function FilaUltima({ fila, onEliminar, cargando, busqueda, busquedaFecha, numer
     </tr>
   );
 }
-
 function Fila({ fila, busqueda, busquedaFecha, numero }) {
   const fechaFormateada = formatearFecha(fila.fecha);
   const coincide =
@@ -81,89 +101,99 @@ function Fila({ fila, busqueda, busquedaFecha, numero }) {
 }
 
 export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busquedaFecha }) {
+  const [filaActivaId, setFilaActivaId] = useState(null);
+
   if (!vista) return null;
 
   const maxCantidad = Math.max(...vista.tabla_amarilla.map((f) => f.cantidad), 1);
 
+  function manejarClickNumero(fila) {
+    if (!esReciente(fila.creado_en)) return;
+    setFilaActivaId((actual) => (actual === fila.id ? null : fila.id));
+  }
+
+  function manejarEliminarClick(id) {
+    setFilaActivaId(null);
+    onEliminar(id);
+  }
+
   return (
     <div className="vista-excel">
-      {/* Fila superior: solo las 4 columnas cronológicas, sin scroll */}
-      <div className="fila-columnas-superiores">
-        <div className="columna-grupo">
-          <h3>Última</h3>
-          <div className="tabla-scroll">
-            <table className="tabla-grupo">
-              <thead>
-                <tr><th></th><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
-              </thead>
-              <tbody>
-                {vista.grupo_a.map((fila, i) => (
-                  <FilaUltima
-                    key={fila.id}
-                    fila={fila}
-                    onEliminar={onEliminar}
-                    cargando={cargando}
-                    busqueda={busqueda}
-                    busquedaFecha={busquedaFecha}
-                    numero={i + 1}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="columna-grupo">
-          <h3>Penúltima cronologico</h3>
-          <div className="tabla-scroll">
-            <table className="tabla-grupo">
-              <thead>
-                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-              </thead>
-              <tbody>
-                {vista.grupo_b.map((fila, i) => (
-                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="columna-grupo">
-          <h3>Penultima</h3>
-          <div className="tabla-scroll">
-            <table className="tabla-grupo">
-              <thead>
-                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-              </thead>
-              <tbody>
-                {vista.grupo_c.map((fila, i) => (
-                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="columna-grupo">
-          <h3>Antepenúltima</h3>
-          <div className="tabla-scroll">
-            <table className="tabla-grupo">
-              <thead>
-                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-              </thead>
-              <tbody>
-                {vista.grupo_d.map((fila, i) => (
-                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="columna-grupo">
+        <h3>Última</h3>
+        <div className="tabla-scroll">
+          <table className="tabla-grupo">
+            <thead>
+              <tr><th></th><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
+            </thead>
+            <tbody>
+              {vista.grupo_a.map((fila, i) => (
+                <FilaUltima
+                  key={fila.id}
+                  fila={fila}
+                  onEliminar={manejarEliminarClick}
+                  cargando={cargando}
+                  busqueda={busqueda}
+                  busquedaFecha={busquedaFecha}
+                  numero={i + 1}
+                  activa={filaActivaId === fila.id}
+                  onClickNumero={() => manejarClickNumero(fila)}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Resumen abajo, a todo el ancho */}
-      <div className="columna-grupo columna-amarilla columna-amarilla-abajo">
+      <div className="columna-grupo">
+        <h3>Penúltima cronologico</h3>
+        <div className="tabla-scroll">
+          <table className="tabla-grupo">
+            <thead>
+              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+            </thead>
+            <tbody>
+              {vista.grupo_b.map((fila, i) => (
+                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="columna-grupo">
+        <h3>Penultima</h3>
+        <div className="tabla-scroll">
+          <table className="tabla-grupo">
+            <thead>
+              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+            </thead>
+            <tbody>
+              {vista.grupo_c.map((fila, i) => (
+                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="columna-grupo">
+        <h3>Antepenúltima</h3>
+        <div className="tabla-scroll">
+          <table className="tabla-grupo">
+            <thead>
+              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+            </thead>
+            <tbody>
+              {vista.grupo_d.map((fila, i) => (
+                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="columna-grupo columna-amarilla">
         <h3>Resumen</h3>
         <div className="tabla-scroll">
           <ol className="ranking">

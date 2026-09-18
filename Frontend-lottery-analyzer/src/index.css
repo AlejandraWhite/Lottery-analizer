@@ -292,7 +292,7 @@ h1 {
 }
 .vista-excel {
   display: flex;
-  flex-direction: column;
+  overflow-x: auto;
   gap: 1px;
   background: #2a313d;
   border: 1px solid #2a313d;
@@ -309,7 +309,8 @@ h1 {
   background: #2d3033;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  min-width: 220px; /* ancho mínimo legible por columna */
+  flex: 1 0 auto;
 }
 
 .columna-grupo h3 {
@@ -405,26 +406,6 @@ h1 {
   background: rgba(247, 245, 245, 0.986);
   border-radius: 3px;
   padding: 1px 3px;
-}
-
-/* Contenedor de las 4 columnas de arriba: se acomodan sin scroll horizontal */
-/* Fila de las 4 columnas: reparte TODO el ancho disponible entre ellas, sin scroll */
-.fila-columnas-superiores {
-  display: flex;
-  flex-wrap: nowrap; /* mantiene las 4 en una sola fila, angostas pero visibles */
-  gap: 1px;
-  width: 100%;
-}
-
-.fila-columnas-superiores .columna-grupo {
-  flex: 1 1 0; /* las 4 se reparten el ancho por igual */
-  min-width: 0;
-}
-
-/* Resumen ocupa todo el ancho debajo */
-.columna-amarilla-abajo {
-  width: 100%;
-  margin-top: 26px; /* separación real respecto a las 4 columnas de arriba */
 }
 
 .tabla-grupo td.num {
@@ -555,6 +536,27 @@ h1 {
   color: #4a5261;
 }
 
+/* Número eliminable: indica que se puede hacer doble clic */
+.num-eliminable {
+  cursor: pointer;
+  position: relative;
+}
+
+.num-eliminable:hover {
+  background: rgba(212, 169, 62, 0.12);
+}
+
+.fila-eliminable {
+  cursor: pointer;
+}
+
+.fila-eliminable:hover {
+  background: rgba(212, 169, 62, 0.08);
+}
+
+.fila-activa {
+  background: rgba(248, 113, 113, 0.1);
+}
 /* Accesibilidad */
 
 .tabla-grupo tbody tr:focus-visible,
@@ -573,11 +575,16 @@ h1 {
 
 @media (max-width: 900px) {
   .vista-excel {
+    flex-direction: column;
     width: 100%;
     left: 0;
     right: 0;
     margin-left: 0;
     margin-right: 0;
+  }
+
+  .columna-grupo {
+    min-width: 0;
   }
 
   .tabla-scroll {

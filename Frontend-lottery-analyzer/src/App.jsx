@@ -13,12 +13,13 @@ import GestorResultados from "./components/GestorResultados";
 import PantallaMiercoles from "./components/PantallaMiercoles";
 import PantallaViernes from "./components/PantallaViernes";
 import AvisoScraping from "./components/AvisoScraping";
+import ErrorBoundary from "./components/ErrorBoundary";
 import "./index.css";
 
 export default function App() {
   const [datos, setDatos] = useState([]);
   const [vistaExcel, setVistaExcel] = useState(null);
-  const [ventana, setVentana] = useState("resumen");
+  const [ventana, setVentana] = useState("excel");
   const [cargando, setCargando] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -111,6 +112,7 @@ export default function App() {
   }
 
   return (
+     <ErrorBoundary>
     <div className="contenedor">
       <h1>Lottery Analyzer</h1>
 
@@ -223,5 +225,6 @@ export default function App() {
         <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} />
       )}
     </div>
+    </ErrorBoundary>
   );
 }

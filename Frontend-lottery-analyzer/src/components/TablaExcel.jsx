@@ -87,63 +87,83 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
 
   return (
     <div className="vista-excel">
-      <div className="columna-grupo">
-        <h3>Última</h3>
-        <div className="tabla-scroll">
-          <table className="tabla-grupo">
-            <thead>
-              <tr><th></th><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
-            </thead>
-            <tbody>
-              {vista.grupo_a.map((fila, i) => (
-                <FilaUltima
-                  key={fila.id}
-                  fila={fila}
-                  onEliminar={onEliminar}
-                  cargando={cargando}
-                  busqueda={busqueda}
-                  busquedaFecha={busquedaFecha}
-                  numero={i + 1}
-                />
-              ))}
-            </tbody>
-          </table>
+      {/* Fila superior: solo las 4 columnas cronológicas, sin scroll */}
+      <div className="fila-columnas-superiores">
+        <div className="columna-grupo">
+          <h3>Última</h3>
+          <div className="tabla-scroll">
+            <table className="tabla-grupo">
+              <thead>
+                <tr><th></th><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
+              </thead>
+              <tbody>
+                {vista.grupo_a.map((fila, i) => (
+                  <FilaUltima
+                    key={fila.id}
+                    fila={fila}
+                    onEliminar={onEliminar}
+                    cargando={cargando}
+                    busqueda={busqueda}
+                    busquedaFecha={busquedaFecha}
+                    numero={i + 1}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="columna-grupo">
+          <h3>Penúltima cronologico</h3>
+          <div className="tabla-scroll">
+            <table className="tabla-grupo">
+              <thead>
+                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+              </thead>
+              <tbody>
+                {vista.grupo_b.map((fila, i) => (
+                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="columna-grupo">
+          <h3>Penultima</h3>
+          <div className="tabla-scroll">
+            <table className="tabla-grupo">
+              <thead>
+                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+              </thead>
+              <tbody>
+                {vista.grupo_c.map((fila, i) => (
+                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="columna-grupo">
+          <h3>Antepenúltima</h3>
+          <div className="tabla-scroll">
+            <table className="tabla-grupo">
+              <thead>
+                <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
+              </thead>
+              <tbody>
+                {vista.grupo_d.map((fila, i) => (
+                  <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div className="columna-grupo">
-        <h3>Penúltima cronologico</h3>
-        <div className="tabla-scroll">
-          <table className="tabla-grupo">
-            <thead>
-              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-            </thead>
-            <tbody>
-              {vista.grupo_b.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="columna-grupo">
-        <h3>Penultima</h3>
-        <div className="tabla-scroll">
-          <table className="tabla-grupo">
-            <thead>
-              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-            </thead>
-            <tbody>
-              {vista.grupo_c.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="columna-grupo columna-amarilla">
+      {/* Resumen abajo, a todo el ancho */}
+      <div className="columna-grupo columna-amarilla columna-amarilla-abajo">
         <h3>Resumen</h3>
         <div className="tabla-scroll">
           <ol className="ranking">
@@ -168,22 +188,6 @@ export default function TablaExcel({ vista, onEliminar, cargando, busqueda, busq
               );
             })}
           </ol>
-        </div>
-      </div>
-
-      <div className="columna-grupo">
-        <h3>Antepenúltima</h3>
-        <div className="tabla-scroll">
-          <table className="tabla-grupo">
-            <thead>
-              <tr><th>Fecha</th><th>Número</th><th>#</th></tr>
-            </thead>
-            <tbody>
-              {vista.grupo_d.map((fila, i) => (
-                <Fila key={i} fila={fila} busqueda={busqueda} busquedaFecha={busquedaFecha} numero={i + 1} />
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
     </div>

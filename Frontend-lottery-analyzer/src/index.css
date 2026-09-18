@@ -22,24 +22,208 @@ h1 {
 
 .barra-superior {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .subir-archivo {
   background: #2563eb;
   color: white;
-  padding: 10px 16px;
-  border-radius: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.subir-archivo:hover {
+  background: #1d4ed8;
 }
 
 .subir-archivo input {
   display: none;
 }
 
+.barra-superior > button {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.barra-superior > button:hover:not(:disabled) {
+  background: #059669;
+}
+
+.barra-superior > button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Pestañas */
+.pestanas {
+  display: flex;
+  gap: 4px;
+  background: #f1f2f5;
+  padding: 4px;
+  border-radius: 9px;
+  margin-left: auto;
+}
+
+.pestanas button {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pestanas button:hover {
+  color: #374151;
+}
+
+.pestanas button.activa {
+  background: white;
+  color: #2563eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.barra-superior select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+}
+
+/* Formulario manual */
+.formulario-manual {
+  background: white;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.formulario-manual h3 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.formulario-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.formulario-fila label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.formulario-fila input {
+  padding: 8px 10px;
+  border-radius: 7px;
+  border: 1px solid #d1d5db;
+  font-size: 13.5px;
+  min-width: 120px;
+}
+
+.formulario-fila input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.formulario-fila button {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.formulario-fila button:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.formulario-fila button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.formulario-error {
+  margin: 10px 0 0 0;
+  color: #b91c1c;
+  font-size: 13px;
+}
+
+/* Barra de búsqueda global */
+.barra-busqueda-global {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.input-busqueda {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 13.5px;
+  flex: 1;
+  max-width: 280px;
+}
+
+.input-busqueda:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.limpiar-busqueda {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 8px;
+  padding: 0 12px;
+  cursor: pointer;
+  color: #6b7280;
+  font-weight: 700;
+}
+
+.limpiar-busqueda:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
 .mensaje {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
@@ -107,20 +291,18 @@ h1 {
   font-weight: 700;
 }
 .vista-excel {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 1px;
   background: #2a313d;
   border: 1px solid #2a313d;
   box-sizing: border-box;
   width: calc(100vw - 80px);
-margin-left: calc(-50vw + 40px);
-margin-right: calc(-50vw + 40px);
   position: relative;
   left: 50%;
   right: 50%;
-  margin-left: calc(-50vw + 24px);
-  margin-right: calc(-50vw + 24px);
+  margin-left: calc(-50vw + 40px);
+  margin-right: calc(-50vw + 40px);
 }
 
 .columna-grupo {
@@ -223,6 +405,26 @@ margin-right: calc(-50vw + 40px);
   background: rgba(247, 245, 245, 0.986);
   border-radius: 3px;
   padding: 1px 3px;
+}
+
+/* Contenedor de las 4 columnas de arriba: se acomodan sin scroll horizontal */
+/* Fila de las 4 columnas: reparte TODO el ancho disponible entre ellas, sin scroll */
+.fila-columnas-superiores {
+  display: flex;
+  flex-wrap: nowrap; /* mantiene las 4 en una sola fila, angostas pero visibles */
+  gap: 1px;
+  width: 100%;
+}
+
+.fila-columnas-superiores .columna-grupo {
+  flex: 1 1 0; /* las 4 se reparten el ancho por igual */
+  min-width: 0;
+}
+
+/* Resumen ocupa todo el ancho debajo */
+.columna-amarilla-abajo {
+  width: 100%;
+  margin-top: 26px; /* separación real respecto a las 4 columnas de arriba */
 }
 
 .tabla-grupo td.num {
@@ -371,7 +573,6 @@ margin-right: calc(-50vw + 40px);
 
 @media (max-width: 900px) {
   .vista-excel {
-    grid-template-columns: 1fr;
     width: 100%;
     left: 0;
     right: 0;

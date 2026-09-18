@@ -373,10 +373,6 @@ h1 {
   color: #7f1d1d;
 }
 
-.col-accion {
-  width: 32px;
-  text-align: center;
-}
 
 .tabla-resultados {
   width: 100%;
@@ -395,8 +391,21 @@ h1 {
   position: relative;
   padding-left: 18px !important;
 }
+.celda-con-fila.celda-con-papelera {
+  padding-left: 40px !important;
+}
+
+.celda-con-papelera .btn-basura {
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5; /* fuerza que quede por encima de fila-numero u otros elementos */
+  pointer-events: auto;
+}
 
 .fila-numero {
+  z-index: 1; 
   position: absolute;
   top: 2px;
   left: 2px;
@@ -564,6 +573,10 @@ h1 {
 }
 .fila-eliminable:hover {
   background: rgba(212, 169, 62, 0.08);
+}
+
+.celda-con-papelera {
+  padding-left: 34px; /* espacio extra SOLO en esta fila para el ícono */
 }
 
 .fila-activa {

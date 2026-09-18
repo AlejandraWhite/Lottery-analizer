@@ -18,7 +18,10 @@ function IconoBasura({ onClick, disabled }) {
     <button
       type="button"
       className="btn-basura"
-      onClick={onClick}
+      onClick={(e) => {
+        console.log("Clic en papelera detectado"); // TEMPORAL
+        onClick(e);
+      }}
       disabled={disabled}
       title="Eliminar y revertir"
       aria-label="Eliminar y revertir"
@@ -59,19 +62,17 @@ function FilaUltima({
       className={`${coincide ? "fila-coincide" : ""} ${mostrarPapelera ? "fila-activa" : ""} ${eliminable ? "fila-eliminable" : ""}`}
       onClick={eliminable ? onClickNumero : undefined}
     >
-      <td className="col-accion">
+      <td className={`celda-con-fila${mostrarPapelera ? " celda-con-papelera" : ""}`}>
+        <span className="fila-numero">{numero}</span>
         {mostrarPapelera && (
           <IconoBasura
             onClick={(e) => {
-              e.stopPropagation(); // evita que el clic en la papelera dispare también el onClick de la fila
+              e.stopPropagation();
               onEliminar(fila.id);
             }}
             disabled={cargando}
           />
         )}
-      </td>
-      <td className="celda-con-fila">
-        <span className="fila-numero">{numero}</span>
         <Resaltado texto={fechaFormateada} busqueda={busquedaFecha} />
       </td>
       <td className="num">
@@ -139,8 +140,8 @@ export default function TablaExcel({
         <div className="tabla-scroll">
           <table className="tabla-grupo">
             <thead>
-              <tr><th></th><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
-            </thead>
+  <tr><th>Fecha</th><th>Número</th><th>#</th><th>Cant</th></tr>
+</thead>
             <tbody>
               {vista.grupo_a.map((fila, i) => (
                 <FilaUltima

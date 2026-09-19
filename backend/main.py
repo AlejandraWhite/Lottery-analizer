@@ -829,6 +829,45 @@ def top_permutantes(limite: int = 10, db: Session = Depends(get_db)):
 
     return {"top": resultado}
 
+@app.get("/historico-4-cifras/duplicados")
+def ver_duplicados_historico4(db: Session = Depends(get_db)):
+    """Vista previa: grupos con la misma fecha y el mismo número. No borra nada."""
+    H = models_historico4.ResultadoHistorico4
+    grupos = (
+        db.query(H.fecha, H.numero, func.count(H.id))
+        .filter(H.fecha.isnot(None), H.numero.isnot(None))
+        .group_by(H.fecha, H.numero)
+        .having(func.count(H.id) > 1)
+        .order_by(H.fecha.desc())
+        .all()
+    )
+    return {
+        "grupos_duplicados": len(grupos),
+        "filas_que_se_eliminarian": sum(c - 1 for _, _, c in grupos),
+        "detalle": [
+            {"fecha": f.isoformat(), "numero": n, "veces": c}
+            for f, n, c in grupos
+        ],
+    }
+
+
+@app.post("/historico-4-cifras/eliminar-duplicados")
+def eliminar_duplicados_historico4(db: Session = Depends(get_db)):
+    """Deja UNA fila por cada (fecha, número) y borra las demás.
+    Se conserva la de menor id, que es la más antigua (la del Excel)."""
+    resultado = db.execute(text("""
+        DELETE FROM resultados_historico_4cifras a
+        USING resultados_historico_4cifras b
+        WHERE a.fecha = b.fecha
+          AND a.numero = b.numero
+          AND a.id > b.id
+    """))
+    db.commit()
+    return {
+        "mensaje": f"{resultado.rowcount} filas duplicadas eliminadas",
+        "resumen": resumen_historico(db),
+    }    
+
 @app.get("/permutantes/conteos")
 def conteos_permutantes(db: Session = Depends(get_db)):
     """Veces que ha caído cada número de 4 cifras en el histórico."""

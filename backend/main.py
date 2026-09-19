@@ -38,6 +38,10 @@ from services import viernes as servicios_viernes
 from services import miercoles as servicios_miercoles
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from database import engine, Base
+
+Base.metadata.create_all(bind=engine)
+
  
 
 app = FastAPI()
@@ -774,6 +778,56 @@ def debug_scraper_crudo(nombre_loteria: str):
         ],
     }
 
+@app.get("/permutantes/top")
+def top_permutantes(limite: int = 10, db: Session = Depends(get_db)):
+    """Los grupos de permutación que más han caído en el histórico,
+    con cada número que cayó y su fecha."""
+    filas = (
+        db.query(
+            models_historico4.ResultadoHistorico4.fecha,
+            models_historico4.ResultadoHistorico4.numero,
+            models_historico4.ResultadoHistorico4.loteria,
+        )
+        .filter(
+            models_historico4.ResultadoHistorico4.numero.isnot(None),
+            models_historico4.ResultadoHistorico4.fecha.isnot(None),
+        )
+        .all()
+    )
+
+    def clave_grupo(numero: str) -> str:
+        # dígitos de menor a mayor, con el 0 como el mayor
+        return "".join(sorted(numero, key=lambda c: 10 if c == "0" else int(c)))
+
+    grupos = {}
+    for fecha, numero, loteria in filas:
+        if len(numero) != 4 or not numero.isdigit():
+            continue  # ignora filas raras (asteriscos, etc.)
+        grupos.setdefault(clave_grupo(numero), []).append(
+            {"fecha": fecha, "numero": numero, "loteria": loteria}
+        )
+
+    ranking = sorted(grupos.items(), key=lambda kv: len(kv[1]), reverse=True)[:limite]
+
+    resultado = []
+    for grupo, apariciones in ranking:
+        apariciones.sort(key=lambda a: a["fecha"], reverse=True)  # más reciente primero
+        resultado.append({
+            "grupo": grupo,
+            "cantidad": len(apariciones),
+            "ultima_fecha": apariciones[0]["fecha"].isoformat(),
+            "primera_fecha": apariciones[-1]["fecha"].isoformat(),
+            "apariciones": [
+                {
+                    "fecha": a["fecha"].isoformat(),
+                    "numero": a["numero"],
+                    "loteria": a["loteria"],
+                }
+                for a in apariciones
+            ],
+        })
+
+    return {"top": resultado}
 
 @app.get("/permutantes/conteos")
 def conteos_permutantes(db: Session = Depends(get_db)):
@@ -790,4 +844,5 @@ def conteos_permutantes(db: Session = Depends(get_db)):
     # Ignora filas raras (con asterisco, sin 4 cifras, etc.)
     conteos = {n: c for n, c in filas if len(n) == 4 and n.isdigit()}
     return {"conteos": conteos, "total": sum(conteos.values())}
+
  

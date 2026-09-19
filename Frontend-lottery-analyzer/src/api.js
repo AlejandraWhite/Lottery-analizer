@@ -243,3 +243,15 @@ export async function sincronizarHistorico4() {
 
   return res.json();
 }
+
+export async function obtenerConteosPermutantes() {
+  const res = await fetch(`${API_URL}/permutantes/conteos`);
+  if (!res.ok) throw new Error("No se pudieron cargar los conteos");
+  return res.json();
+}
+
+export async function obtenerTopPermutantes(limite = 10) {
+  const res = await fetch(`${API_URL}/permutantes/top?limite=${limite}`);
+  if (!res.ok) throw new Error("No se pudo cargar el top de permutantes");
+  return res.json();
+}

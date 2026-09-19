@@ -1,0 +1,94 @@
+.permutantes .tabla-scroll {
+  max-height: 75vh;
+  overflow: auto;              /* scroll vertical y horizontal */
+  border: 1px solid #9ca3af;
+  background: white;
+}
+
+.permutantes .tabla-permutantes {
+  border-collapse: separate;   /* necesario para que sticky mantenga los bordes */
+  border-spacing: 0;
+  font-size: 0.9rem;
+}
+
+/* Cuadrícula tipo Excel: borde en cada celda */
+.permutantes .tabla-permutantes th,
+.permutantes .tabla-permutantes td {
+  color: #000 !important;
+  border-right: 1px solid #c4c9d1;
+  border-bottom: 1px solid #c4c9d1;
+  padding: 6px 8px;
+  text-align: center;
+  white-space: nowrap;
+  background: white;
+}
+
+/* Encabezado fijo arriba */
+.permutantes .tabla-permutantes thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #e5e7eb;
+  font-weight: 700;
+  border-bottom: 2px solid #6b7280;
+}
+
+/* Filas alternas (cebra) */
+.permutantes .tabla-permutantes tbody tr:nth-child(even) td {
+  background: #f3f4f6;
+}
+
+/* Columnas fijas a la izquierda: #, Grupo, Cant. */
+.permutantes .col-fija {
+  position: sticky;
+  z-index: 2;
+}
+.permutantes thead .col-fija {
+  z-index: 4;                  /* esquina: por encima de todo */
+}
+.permutantes .col-1 { left: 0;     min-width: 48px;  width: 48px; }
+.permutantes .col-2 { left: 48px;  min-width: 80px;  width: 80px; }
+.permutantes .col-3 { left: 128px; min-width: 120px; width: 120px; }
+.permutantes .col-4 {
+  left: 248px;
+  min-width: 80px;
+  width: 80px;
+  border-right: 2px solid #6b7280;   /* separa lo fijo de lo que se desplaza */
+}
+
+.permutantes .perm-cantidad {
+  font-weight: 700;
+}
+
+/* Cuántas veces ha caído cada permutación (número pequeño junto al número) */
+.permutantes .perm-veces {
+  margin-left: 5px;
+  font-size: 0.7em;
+  font-family: system-ui, sans-serif;
+  color: #4338ca !important;
+  font-weight: 700;
+  vertical-align: super;
+}
+
+.permutantes .perm-grupo {
+  font-weight: 700;
+  font-size: 1.05em;
+  letter-spacing: 1px;
+}
+
+/* Celdas de permutaciones */
+.permutantes .perm-celda {
+  font-family: "IBM Plex Mono", monospace;
+  min-width: 60px;
+}
+
+/* Celdas sin permutación: más apagadas */
+.permutantes .tabla-permutantes tbody td.perm-vacia {
+  background: #fafafa;
+}
+
+/* Fila donde te paras */
+.permutantes .tabla-permutantes tbody tr:hover td {
+  background: #c7d2fe !important;    /* azul-morado claro */
+  color: #1e1b4b !important;
+}

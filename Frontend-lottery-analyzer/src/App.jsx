@@ -15,6 +15,8 @@ import PantallaMiercoles from "./components/PantallaMiercoles";
 import PantallaViernes from "./components/PantallaViernes";
 import AvisoScraping from "./components/AvisoScraping";
 import ErrorBoundary from "./components/ErrorBoundary";
+import PantallaPermutantes from "./components/PantallaPermutantes";
+import PantallaTopPermutantes from "./components/PantallaTopPermutantes";
 import "./index.css";
 
 export default function App() {
@@ -205,6 +207,18 @@ export default function App() {
           >
             Viernes
           </button>
+          <button
+       className={ventana === "permutantes" ? "activa" : ""}
+      onClick={() => setVentana("permutantes")}
+           >
+          Permutantes
+          </button>
+          <button
+      className={ventana === "topperm" ? "activa" : ""}
+      onClick={() => setVentana("topperm")}
+        >
+       Top permutantes
+         </button>
         </div>
         {ventana === "resumen" && (
           <select value={orden} onChange={(e) => setOrden(e.target.value)}>
@@ -246,6 +260,12 @@ export default function App() {
 ) : 
 ventana === "historico4" ? (
   <PantallaHistorico4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
+ventana === "permutantes" ? (
+  <PantallaPermutantes busqueda={busqueda} />
+) :
+ventana === "topperm" ? (
+  <PantallaTopPermutantes />
 ) :
 (
   <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />

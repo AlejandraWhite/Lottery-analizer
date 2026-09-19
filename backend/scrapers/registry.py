@@ -28,6 +28,7 @@ from .loteria_boyaca import LoteriaBoyacaScraper
 from .loteria_cauca import LoteriaCaucaScraper
 from .loteria_quindio import LoteriaQuindioScraper
 from .loteria_cruz_roja import LoteriaCruzRojaScraper
+from .loteria_bogota import LoteriaBogotaScraper
 
 SCRAPERS_ACTIVOS = [
     # Miércoles
@@ -46,13 +47,12 @@ SCRAPERS_ACTIVOS = [
     LoteriaCruzRojaScraper(),
     # Jueves
     LoteriaQuindioScraper(),
+    LoteriaBogotaScraper(),  
     # Sábado
     LoteriaBoyacaScraper(),
     LoteriaCaucaScraper(),
 ]
 
-# Cubierta por dataset individual en datos.gov.co (sync_datasets_individuales.py):
-# Lotería de Bogotá (kntg-ytfw)
 
 # Dejada fuera a propósito (ver nota arriba):
 # Extra de Colombia — sin día de sorteo fijo

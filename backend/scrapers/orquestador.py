@@ -40,7 +40,7 @@ from .registry import SCRAPERS_ACTIVOS
 
 from models import Resultado
 from crud import obtener_o_crear_archivo_sincronizacion, crear_resultado_scraping
-from services.analisis import registrar_nuevo_resultado
+from services.analisis import registrar_nuevo_resultado, agregar_desde_resultado
 from services.miercoles import registrar_resultado_scraping_miercoles
 from services.viernes import registrar_resultado_scraping_viernes
 
@@ -246,6 +246,7 @@ def sincronizar_desde_scraping(db: Session) -> Tuple[List[Resultado], ReporteScr
 
         registrar_nuevo_resultado(db, resultado)
         _repartir_a_pantalla_del_dia(db, r.loteria, r.fecha, numero_completo)
+        agregar_desde_resultado(db, resultado, commit=False)
         nuevos.append(resultado)
 
     db.commit()
@@ -307,6 +308,7 @@ def sincronizar_historico_desde_scraping(db: Session, dias_atras: int = 60) -> T
         db.flush()
         registrar_nuevo_resultado(db, resultado)
         _repartir_a_pantalla_del_dia(db, loteria, fecha, numero_completo)
+        agregar_desde_resultado(db, resultado, commit=False) 
         nuevos.append(resultado)
 
     db.commit()

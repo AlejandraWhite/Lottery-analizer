@@ -13,6 +13,9 @@ import models_miercoles
 import crud
 import models_viernes
 import models_scraping
+import models_historico4                   
+from routers import historico4 as router_historico4
+from services.historico4 import backfill_desde_resultado, resumen_historico
 from sqlalchemy import text
 from database import SessionLocal
 from services.analisis import (
@@ -55,6 +58,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(router_historico4.router)
 # =========================================================
 # CONEXIÓN A BASE DE DATOS
 # =========================================================
@@ -71,6 +76,15 @@ class ResultadoManualIn(BaseModel):
     fecha: str          # admite "YYYY-MM-DD" o "DD/MM/YYYY"
     numero: str
     loteria: str = "Manual"
+
+@app.post("/debug/backfill-historico4")
+def backfill_historico4_endpoint(db: Session = Depends(get_db)):
+    agregados = backfill_desde_resultado(db)
+    resumen = resumen_historico(db)
+    return {
+        "mensaje": f"{agregados} resultados agregados al histórico de 4 cifras",
+        "resumen": resumen,
+    }    
 
 
 @app.post("/resultados/manual")
@@ -515,7 +529,17 @@ def obtener_vista_excel(db: Session = Depends(get_db)):
     """Ventana 2: los 3 grupos de columnas + tabla amarilla, automáticos."""
     return construir_vista_excel(db)
 
+
+
 @app.get("/debug/conteo-por-terminacion")
+@app.get("/debug/fecha-maxima-global")
+def debug_fecha_maxima_global(db: Session = Depends(get_db)):
+    maxima = db.query(func.max(Resultado.fecha)).scalar()
+    total = db.query(func.count(Resultado.id)).scalar()
+    return {
+        "fecha_maxima_en_resultado": maxima.isoformat() if maxima else None,
+        "total_filas": total,
+    }
 def debug_conteo(db: Session = Depends(get_db)):
     conteos = (
         db.query(Resultado.numero, func.count(Resultado.id))
@@ -713,10 +737,41 @@ def obtener_historial_viernes(loteria: str, db: Session = Depends(get_db)):
         })
 
     return filas
-
+@app.post("/historico-4-cifras/sincronizar")
+def sincronizar_historico4_endpoint(db: Session = Depends(get_db)):
+    """
+    Pone al día ResultadoHistorico4 con lo que ya exista en Resultado
+    (idempotente: agregar_resultado no duplica nada). Útil como botón
+    manual de 'por si acaso' en el frontend, además del sync automático
+    que ya corre solo tras la API/scraping diarios.
+    """
+    agregados = backfill_desde_resultado(db)
+    resumen = resumen_historico(db)
+    return {
+        "mensaje": f"{agregados} resultados nuevos agregados al histórico" if agregados
+                   else "El histórico ya estaba al día",
+        "resumen": resumen,
+    }
 
 @app.get("/viernes/vista")
 def obtener_vista_viernes_endpoint(db: Session = Depends(get_db)):
     return servicios_viernes.construir_vista_viernes(db)
+
+@app.get("/debug/scraper-crudo/{nombre_loteria}")
+def debug_scraper_crudo(nombre_loteria: str):
+    from scrapers.registry import SCRAPERS_ACTIVOS
+    scraper = next((s for s in SCRAPERS_ACTIVOS if s.nombre_loteria == nombre_loteria), None)
+    if scraper is None:
+        return {"error": "no encontrado", "disponibles": [s.nombre_loteria for s in SCRAPERS_ACTIVOS]}
+
+    historico = scraper.obtener_historico(max_sorteos=30)
+    return {
+        "loteria": nombre_loteria,
+        "cantidad": len(historico) if historico else 0,
+        "resultados": [
+            {"fecha": r.fecha.isoformat(), "numero": r.numero_completo}
+            for r in (historico or [])
+        ],
+    }
 
  

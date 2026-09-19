@@ -1,15 +1,21 @@
 # lottery-analyzer/backend/services/analisis.py
 import requests
+import re
+import unicodedata
+
+import requests
 
 from models import Resultado, Archivo, ContadorTerminacion, EstadoTerminacion
+from models_historico4 import ResultadoHistorico4
 
 DATOS_GOV_URL = "https://www.datos.gov.co/resource/i3kx-3zps.json"
 
 NOMBRE_ARCHIVO_SINCRONIZACION = "Sincronización automática API datos.gov.co"
 
 from datetime import datetime, date, timedelta
+from models_historico4 import ResultadoHistorico4
 from io import BytesIO
-
+from services.historico4 import agregar_desde_resultado, quitar_resultado
 from openpyxl import load_workbook
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -20,7 +26,12 @@ class ResultadoNoEncontrado(Exception):
 
 class ResultadoDemasiadoAntiguo(Exception):
     pass
-
+def _fecha_iso(valor):
+    if valor is None:
+        return None
+    if isinstance(valor, datetime):   # datetime va primero: es subclase de date
+        valor = valor.date()
+    return valor.isoformat()
 
 def eliminar_resultado(db: Session, resultado_id: int, dias_limite: int = 7):
     resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
@@ -68,9 +79,11 @@ def convertir_resultado(resultado):
     numero_completo = normalizar_numero_completo(resultado.numero_completo)
     ultimas_dos = obtener_ultimas_dos(numero_completo)
 
+    
+
     return {
         "id": resultado.id,
-        "fecha": resultado.fecha.isoformat() if resultado.fecha else None,
+        "fecha": _fecha_iso(resultado.fecha),
         "numero_completo": numero_completo,
         "ultimas_dos": ultimas_dos,
         "loteria": getattr(resultado, "loteria", None),
@@ -288,14 +301,42 @@ def obtener_o_crear_archivo_sincronizacion(db: Session) -> Archivo:
 
 def obtener_fecha_ultimo_sincronizado(db: Session):
     """
-    Última fecha con resultados traídos por la API (ignora el bloque
-    'Histórico' que viene del excel manual del señor).
+    Última fecha con resultados guardados, mirando las DOS tablas:
+    Resultado (ignorando el bloque 'Histórico') y ResultadoHistorico4
+    (la que llenaste con el excel de ~20 años). Se usa la más reciente
+    de las dos para que la sincronización arranque justo donde se
+    quedó el histórico de 4 cifras, sin importar la fecha de Resultado.
     """
-    return (
+    ultima_resultado = (
         db.query(func.max(Resultado.fecha))
         .filter(Resultado.loteria != "Histórico")
         .scalar()
     )
+    ultima_historico4 = db.query(func.max(ResultadoHistorico4.fecha)).scalar()
+
+    fechas = [f for f in (ultima_resultado, ultima_historico4) if f is not None]
+    return max(fechas) if fechas else None
+
+def _sin_acentos(texto: str) -> str:
+    return "".join(
+        c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn"
+    )
+
+
+CORRECCIONES_LOTERIA = {
+    "bogota": "Bogotá", "medellin": "Medellín", "boyaca": "Boyacá",
+    "quindio": "Quindío", "cruz roja": "Cruz Roja",
+}
+
+
+def normalizar_nombre_loteria(nombre_crudo: str) -> str:
+    if not nombre_crudo:
+        return "Desconocida"
+    sin_prefijo = re.sub(
+        r"^loter[ií]a\s+(de\s+la\s+|del\s+|de\s+)?", "", nombre_crudo.strip(), flags=re.IGNORECASE
+    ).strip() or nombre_crudo.strip()
+    clave = _sin_acentos(sin_prefijo).lower()
+    return CORRECCIONES_LOTERIA.get(clave, sin_prefijo.title())
 
 
 def sincronizar_desde_api_datos_gov(db: Session, dias_por_defecto: int = 30):
@@ -335,7 +376,7 @@ def sincronizar_desde_api_datos_gov(db: Session, dias_por_defecto: int = 30):
 
             numero_billete = registro.get("numero_billete_ganador")
             fecha_texto = registro.get("fecha_del_sorteo")
-            loteria = registro.get("loter_a", "Desconocida")
+            loteria = normalizar_nombre_loteria(registro.get("loter_a", "Desconocida"))
 
             if not numero_billete or not fecha_texto:
                 continue
@@ -381,6 +422,7 @@ def sincronizar_desde_api_datos_gov(db: Session, dias_por_defecto: int = 30):
         db.flush()
 
         registrar_nuevo_resultado(db, resultado)
+        agregar_desde_resultado(db, resultado, commit=False)
         nuevos.append(resultado)
 
     db.commit()
@@ -695,7 +737,7 @@ def registrar_resultado_manual(db: Session, fecha_texto: str, numero: str, loter
     db.flush()
 
     registrar_nuevo_resultado(db, resultado)
-
+    agregar_desde_resultado(db, resultado, commit=False)
     db.commit()
     db.refresh(resultado)
 
@@ -716,6 +758,7 @@ def obtener_resultado_por_id(db: Session, resultado_id: int):
 
 def revertir_registro_resultado(db: Session, resultado: Resultado):
     terminacion = resultado.numero
+    quitar_resultado(db, resultado.fecha, resultado.numero_completo)
     estado = obtener_o_crear_estado(db, terminacion)
 
     if estado.ultima_id == resultado.id:

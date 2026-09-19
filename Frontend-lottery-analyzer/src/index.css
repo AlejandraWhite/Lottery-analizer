@@ -388,9 +388,13 @@ h1 {
 }
 
 .celda-con-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;              /* espacio fijo entre el número de fila y la fecha */
   position: relative;
-  padding-left: 18px !important;
 }
+
+
 .celda-con-fila.celda-con-papelera {
   padding-left: 40px !important;
 }
@@ -405,16 +409,17 @@ h1 {
 }
 
 .fila-numero {
-  z-index: 1; 
-  position: absolute;
-  top: 2px;
-  left: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5em;
+  flex-shrink: 0;
   font-size: 9px;
   line-height: 1;
   color: #1916e6;
   background: rgba(247, 245, 245, 0.986);
   border-radius: 3px;
-  padding: 1px 3px;
+  padding: 2px 4px;
 }
 
 .tabla-grupo td.num {

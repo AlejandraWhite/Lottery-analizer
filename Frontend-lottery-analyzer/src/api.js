@@ -184,3 +184,62 @@ export async function sincronizarScraping() {
   }
   return res.json();
 }
+
+// ===== Pegar al final de src/api.js =====
+
+export async function importarHistorico4(archivo, { reemplazar = false, filaInicial = 1 } = {}) {
+  const formData = new FormData();
+  formData.append("file", archivo);
+
+  const params = new URLSearchParams({
+    reemplazar: String(reemplazar),
+    fila_inicial: String(filaInicial),
+  });
+
+  const res = await fetch(`${API_URL}/historico-4-cifras/importar-excel?${params}`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Error al importar el histórico de 4 cifras");
+  }
+
+  return res.json();
+}
+
+export async function obtenerResumenHistorico4() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/resumen`);
+  if (!res.ok) throw new Error("Error al obtener el resumen del histórico");
+  return res.json();
+}
+
+export async function listarHistorico4({
+  limite = 100,
+  offset = 0,
+  numero = "",
+  fecha = "",
+  modo = "cualquiera",
+} = {}) {
+  const params = new URLSearchParams({ limite, offset, modo });
+  if (numero) params.set("numero", numero);
+  if (fecha) params.set("fecha", fecha);
+
+  const res = await fetch(`${API_URL}/historico-4-cifras?${params.toString()}`);
+  if (!res.ok) throw new Error("Error al listar el histórico de 4 cifras");
+  return res.json();
+}
+
+export async function sincronizarHistorico4() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/sincronizar`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Error al sincronizar el histórico de 4 cifras");
+  }
+
+  return res.json();
+}

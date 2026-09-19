@@ -9,6 +9,7 @@ import {
 } from "./api";
 import TablaAnalisis from "./components/TablaAnalisis";
 import TablaExcel from "./components/TablaExcel";
+import PantallaHistorico4 from "./components/PantallaHistorico4";
 import GestorResultados from "./components/GestorResultados";
 import PantallaMiercoles from "./components/PantallaMiercoles";
 import PantallaViernes from "./components/PantallaViernes";
@@ -141,7 +142,7 @@ export default function App() {
         setModoBusqueda(e.target.checked ? "ultimas2" : "cualquiera")
       }
     />
-    Solo últimas 2 cifras
+    Solo últimas cifras
   </label>
 
   <input
@@ -173,6 +174,13 @@ export default function App() {
         </button>
 
         <div className="pestanas">
+
+          <button
+         className={ventana === "historico4" ? "activa" : ""}
+           onClick={() => setVentana("historico4")}
+             >
+            Histórico 4 cifras
+         </button>
           <button
             className={ventana === "resumen" ? "activa" : ""}
             onClick={() => setVentana("resumen")}
@@ -235,7 +243,11 @@ export default function App() {
   />
 ) : ventana === "miercoles" ? (
   <PantallaMiercoles busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
-) : (
+) : 
+ventana === "historico4" ? (
+  <PantallaHistorico4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
+(
   <PantallaViernes busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 )}
     </div>

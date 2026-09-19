@@ -774,4 +774,20 @@ def debug_scraper_crudo(nombre_loteria: str):
         ],
     }
 
+
+@app.get("/permutantes/conteos")
+def conteos_permutantes(db: Session = Depends(get_db)):
+    """Veces que ha caído cada número de 4 cifras en el histórico."""
+    filas = (
+        db.query(
+            models_historico4.ResultadoHistorico4.numero,
+            func.count(models_historico4.ResultadoHistorico4.id),
+        )
+        .filter(models_historico4.ResultadoHistorico4.numero.isnot(None))
+        .group_by(models_historico4.ResultadoHistorico4.numero)
+        .all()
+    )
+    # Ignora filas raras (con asterisco, sin 4 cifras, etc.)
+    conteos = {n: c for n, c in filas if len(n) == 4 and n.isdigit()}
+    return {"conteos": conteos, "total": sum(conteos.values())}
  

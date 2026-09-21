@@ -870,18 +870,20 @@ def eliminar_duplicados_historico4(db: Session = Depends(get_db)):
 
 @app.get("/permutantes/conteos")
 def conteos_permutantes(db: Session = Depends(get_db)):
-    """Veces que ha caído cada número de 4 cifras en el histórico."""
+    """Veces que ha caído cada número de 4 cifras y la última fecha en que cayó."""
+    H = models_historico4.ResultadoHistorico4
     filas = (
-        db.query(
-            models_historico4.ResultadoHistorico4.numero,
-            func.count(models_historico4.ResultadoHistorico4.id),
-        )
-        .filter(models_historico4.ResultadoHistorico4.numero.isnot(None))
-        .group_by(models_historico4.ResultadoHistorico4.numero)
+        db.query(H.numero, func.count(H.id), func.max(H.fecha))
+        .filter(H.numero.isnot(None))
+        .group_by(H.numero)
         .all()
     )
     # Ignora filas raras (con asterisco, sin 4 cifras, etc.)
-    conteos = {n: c for n, c in filas if len(n) == 4 and n.isdigit()}
-    return {"conteos": conteos, "total": sum(conteos.values())}
+    validas = [(n, c, f) for n, c, f in filas if len(n) == 4 and n.isdigit()]
+    return {
+        "conteos": {n: c for n, c, _ in validas},
+        "ultimas_fechas": {n: f.isoformat() for n, _, f in validas if f},
+        "total": sum(c for _, c, _ in validas),
+    }
 
  

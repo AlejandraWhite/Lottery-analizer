@@ -32,11 +32,11 @@
 
 /* Fila que coincide con el filtro de cantidad */
 .permutantes .tabla-permutantes tbody tr.fila-cantidad td {
-  background: #5e36cc  !important;
+  background: #8b6fd8  !important;
 }
 
 .permutantes .tabla-permutantes tbody tr.fila-cantidad td.sticky-1 {
-  background: #5e36cc !important;
+  background: #977be4 !important;
 }
 
 .permutantes .tabla-permutantes tbody tr.fila-cantidad td.perm-cantidad {
@@ -46,13 +46,13 @@
 .perm-contador {
   font-size: 12.5px;
   font-weight: 600;
-  color: #eff0e1;
-  background: #db08ad;
+  color: #0c0c0c;
+  background: #87ece7;
   padding: 4px 10px;
   border-radius: 10px;
 }
 .top-perm-puesto {
-  background: #4338ca;
+  background: #6357e4;
   color: white;
   font-weight: 700;
   border-radius: 50%;
@@ -103,7 +103,7 @@
   top: 0;
   background: #f0f0f0;
   font-weight: 700;
-  border-bottom: 2px solid #6b7280;
+  border-bottom: 2px solid #201e1f;
 }
 
 .top-perm-tabla tbody tr:nth-child(even) td {
@@ -127,7 +127,7 @@
 }
 
 .permutantes .tabla-permutantes tbody td.celda-final .perm-veces {
-  color: #f3e8ff !important;
+  color: #08050c !important;
 }
 
 @media (max-width: 900px) {

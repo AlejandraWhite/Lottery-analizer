@@ -262,7 +262,7 @@ ventana === "historico4" ? (
   <PantallaHistorico4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 ) :
 ventana === "permutantes" ? (
-  <PantallaPermutantes busqueda={busqueda} />
+  <PantallaPermutantes busqueda={busqueda} busquedaFecha={busquedaFecha} />
 ) :
 ventana === "topperm" ? (
   <PantallaTopPermutantes />

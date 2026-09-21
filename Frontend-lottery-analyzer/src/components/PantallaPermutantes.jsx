@@ -55,7 +55,7 @@ function grupoCoincide(digitos, busqueda) {
   return true;
 }
 
-export default function PantallaPermutantes({ busqueda }) {
+export default function PantallaPermutantes({ busqueda, busquedaFecha }) {
   const [conteos, setConteos] = useState({});
   const [ultimasFechas, setUltimasFechas] = useState({});
   const [totalHistorico, setTotalHistorico] = useState(0);
@@ -101,11 +101,23 @@ export default function PantallaPermutantes({ busqueda }) {
   [conteos, ultimasFechas]
 );
 
-const visibles = grupos.filter(
-  (g) =>
-    grupoCoincide(g.digitos, busqueda) &&
-    (filtroCantidad === "" || g.cantidad === Number(filtroCantidad))
-);
+const visibles = grupos;
+
+// Coincide por dígitos o por fecha (última vez que cayó el grupo)
+const coincideBusqueda = (g) =>
+  (Boolean(busqueda) && grupoCoincide(g.digitos, busqueda)) ||
+  (Boolean(busquedaFecha) && formatoFecha(g.ultimaFecha).includes(busquedaFecha));
+
+const totalBusqueda =
+  busqueda || busquedaFecha ? visibles.filter(coincideBusqueda).length : 0;
+
+const coincideCantidad = (cantidad) =>
+  filtroCantidad !== "" && cantidad === Number(filtroCantidad);
+
+const totalCoinciden =
+  filtroCantidad === ""
+    ? 0
+    : visibles.filter((g) => g.cantidad === Number(filtroCantidad)).length;
 
   // Del que cayó hace más tiempo al más reciente (los que nunca han caído no aparecen)
   const cronologicos = useMemo(
@@ -121,8 +133,9 @@ const visibles = grupos.filter(
   return (
     <div className="permutantes">
       <h3>
-        Permutantes de 4 cifras ({visibles.length} de {grupos.length})
-      </h3>
+  Permutantes de 4 cifras ({grupos.length})
+  {(busqueda || busquedaFecha) && ` · ${totalBusqueda} coinciden`}
+</h3>
       <p>
         Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
         {totalHistorico.toLocaleString()} números del histórico.
@@ -142,8 +155,11 @@ const visibles = grupos.filter(
   {filtroCantidad !== "" && (
     <button type="button" className="perm-limpiar" onClick={() => setFiltroCantidad("")}>
       ✕ Limpiar
-    </button>
+    </button>  
   )}
+  {filtroCantidad !== "" && (
+  <span className="perm-contador">{totalCoinciden} coinciden</span>
+)}
 </div>
       {error && <p className="formulario-error">{error}</p>}
 
@@ -162,16 +178,21 @@ const visibles = grupos.filter(
             </thead>
             <tbody>
               {cronologicos.map((c, i) => (
-                <tr key={c.etiqueta}>
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="perm-grupo-cron">
-                    <strong>{c.etiqueta}</strong>{" "}
-                    <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
-                  </td>
-                  <td className="perm-cantidad">{c.cantidad}</td>
-                  <td className="perm-ultima-comb">{c.ultimaCombinacion}</td>
-                </tr>
-              ))}
+  <tr
+  key={c.etiqueta}
+  className={`${coincideBusqueda(c) ? "fila-busqueda" : ""} ${
+    coincideCantidad(c.cantidad) ? "fila-cantidad" : ""
+  }`}
+>
+    <td className="sticky-1">{i + 1}</td>
+    <td className="perm-grupo-cron">
+      <strong>{c.etiqueta}</strong>{" "}
+      <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
+    </td>
+    <td className="perm-cantidad">{c.cantidad}</td>
+    <td className="perm-ultima-comb">{c.ultimaCombinacion}</td>
+  </tr>
+))}
             </tbody>
           </table>
         </div>
@@ -180,35 +201,40 @@ const visibles = grupos.filter(
         <div className="perm-scroll perm-scroll-normal">
           <table className="tabla-permutantes tabla-normal">
             <thead>
-              <tr>
-                <th className="sticky-1">#</th>
-                <th className="sticky-2">Grupo</th>
-                <th className="sticky-3">Cantidad</th>
-                <th className="sticky-4">Combinaciones</th>
-                {columnasPerm.map((_, i) => (
-                  <th key={i}>{i + 1}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibles.map((g, i) => (
-                <tr key={g.etiqueta}>
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
-                  <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
-                  <td className="sticky-4">{g.permutaciones.length}</td>
-                  {columnasPerm.map((_, j) => {
-                    const p = g.permutaciones[j];
-                    return (
-                      <td key={j} className={p ? "perm-celda" : "perm-celda perm-vacia"}>
-                        {p ?? ""}
-                        {p && <span className="perm-veces">{conteos[p] || 0}</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
+  <tr>
+    <th className="sticky-1">#</th>
+    <th className="sticky-2">Grupo</th>
+    <th className="sticky-3">Cantidad</th>
+    <th className="sticky-4">Combinaciones</th>
+    {columnasPerm.map((_, i) => (
+      <th key={i}>{i + 1}</th>
+    ))}
+  </tr>
+</thead>
+           <tbody>
+  {visibles.map((g, i) => (
+    <tr
+      key={g.etiqueta}
+      className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
+        coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
+      }`}
+    >
+      <td className="sticky-1">{i + 1}</td>
+      <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
+      <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
+      <td className="sticky-4">{g.permutaciones.length}</td>
+      {columnasPerm.map((_, j) => {
+        const p = g.permutaciones[j];
+        return (
+          <td key={j} className={p ? "perm-celda" : "perm-celda perm-vacia"}>
+            {p ?? ""}
+            {p && <span className="perm-veces">{conteos[p] || 0}</span>}
+          </td>
+        );
+      })}
+    </tr>
+  ))}
+</tbody>
           </table>
         </div>
       </div>

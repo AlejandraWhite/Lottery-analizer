@@ -6,7 +6,7 @@
 
 .top-perm-bloque {
   background: white;
-  border: 1px solid #9ca3af;
+  border: 1px solid #a59caf;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -21,7 +21,36 @@
   border-bottom: 2px solid #6b7280;
   color: #000;
 }
+/* Fila que coincide con la búsqueda de dígitos/fecha */
+.permutantes .tabla-permutantes tbody tr.fila-busqueda td {
+  background: #da4a9e !important;
+}
 
+.permutantes .tabla-permutantes tbody tr.fila-busqueda td.sticky-1 {
+  background: #d8b4fe !important;
+}
+
+/* Fila que coincide con el filtro de cantidad */
+.permutantes .tabla-permutantes tbody tr.fila-cantidad td {
+  background: #5e36cc  !important;
+}
+
+.permutantes .tabla-permutantes tbody tr.fila-cantidad td.sticky-1 {
+  background: #5e36cc !important;
+}
+
+.permutantes .tabla-permutantes tbody tr.fila-cantidad td.perm-cantidad {
+  background: #c02bb9 !important;
+}
+
+.perm-contador {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #813c0d;
+  background: #433ca3;
+  padding: 4px 10px;
+  border-radius: 10px;
+}
 .top-perm-puesto {
   background: #4338ca;
   color: white;

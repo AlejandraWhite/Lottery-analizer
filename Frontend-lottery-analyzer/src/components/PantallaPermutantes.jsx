@@ -59,6 +59,7 @@ export default function PantallaPermutantes({ busqueda }) {
   const [conteos, setConteos] = useState({});
   const [ultimasFechas, setUltimasFechas] = useState({});
   const [totalHistorico, setTotalHistorico] = useState(0);
+  const [filtroCantidad, setFiltroCantidad] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -100,7 +101,11 @@ export default function PantallaPermutantes({ busqueda }) {
   [conteos, ultimasFechas]
 );
 
-  const visibles = grupos.filter((g) => grupoCoincide(g.digitos, busqueda));
+const visibles = grupos.filter(
+  (g) =>
+    grupoCoincide(g.digitos, busqueda) &&
+    (filtroCantidad === "" || g.cantidad === Number(filtroCantidad))
+);
 
   // Del que cayó hace más tiempo al más reciente (los que nunca han caído no aparecen)
   const cronologicos = useMemo(
@@ -122,9 +127,28 @@ export default function PantallaPermutantes({ busqueda }) {
         Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
         {totalHistorico.toLocaleString()} números del histórico.
       </p>
+       <div className="perm-filtros">
+  <label>
+    Cantidad:
+    <input
+      type="number"
+      min="0"
+      inputMode="numeric"
+      placeholder="Ej: 5"
+      value={filtroCantidad}
+      onChange={(e) => setFiltroCantidad(e.target.value)}
+    />
+  </label>
+  {filtroCantidad !== "" && (
+    <button type="button" className="perm-limpiar" onClick={() => setFiltroCantidad("")}>
+      ✕ Limpiar
+    </button>
+  )}
+</div>
       {error && <p className="formulario-error">{error}</p>}
 
       <div className="permutantes-dos-grupos">
+     
         {/* ============ GRUPO 1: CRONOLÓGICO ============ */}
         <div className="perm-scroll perm-scroll-cron">
           <table className="tabla-permutantes tabla-cron">

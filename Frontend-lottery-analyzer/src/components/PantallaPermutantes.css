@@ -24,6 +24,51 @@
   min-width: 0;                   /* necesario para el scroll horizontal dentro de flex */
 }
 
+.perm-filtros {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+
+.perm-filtros label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.perm-filtros input {
+  width: 100px;
+  padding: 6px 10px;
+  border: 1px solid #a6a6a6;
+  border-radius: 4px;
+  font-size: 13.5px;
+}
+
+.perm-filtros input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.perm-limpiar {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.perm-limpiar:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 /* ===== Tabla base tipo Excel ===== */
 .permutantes .tabla-permutantes {
   border-collapse: separate;      /* para que sticky conserve los bordes */

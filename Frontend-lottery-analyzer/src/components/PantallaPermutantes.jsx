@@ -71,20 +71,34 @@ export default function PantallaPermutantes({ busqueda }) {
       .catch((e) => setError(e.message));
   }, []);
 
-  const grupos = useMemo(
-    () =>
-      generarGrupos().map((digitos) => {
-        const permutaciones = permutacionesUnicas(digitos);
-        const cantidad = permutaciones.reduce((s, p) => s + (conteos[p] || 0), 0);
-        // Última vez que cayó CUALQUIER permutación del grupo (ISO se compara como texto)
-        const ultimaFecha = permutaciones.reduce((max, p) => {
-          const f = ultimasFechas[p];
-          return f && (!max || f > max) ? f : max;
-        }, null);
-        return { digitos, etiqueta: digitos.join(""), permutaciones, cantidad, ultimaFecha };
-      }),
-    [conteos, ultimasFechas]
-  );
+ const grupos = useMemo(
+  () =>
+    generarGrupos().map((digitos) => {
+      const permutaciones = permutacionesUnicas(digitos);
+      const cantidad = permutaciones.reduce((s, p) => s + (conteos[p] || 0), 0);
+
+      // Permutación que cayó más recientemente y su fecha
+      let ultimaFecha = null;
+      let ultimaCombinacion = null;
+      for (const p of permutaciones) {
+        const f = ultimasFechas[p];
+        if (f && (!ultimaFecha || f > ultimaFecha)) {
+          ultimaFecha = f;
+          ultimaCombinacion = p;
+        }
+      }
+
+      return {
+        digitos,
+        etiqueta: digitos.join(""),
+        permutaciones,
+        cantidad,
+        ultimaFecha,
+        ultimaCombinacion,
+      };
+    }),
+  [conteos, ultimasFechas]
+);
 
   const visibles = grupos.filter((g) => grupoCoincide(g.digitos, busqueda));
 
@@ -97,47 +111,68 @@ export default function PantallaPermutantes({ busqueda }) {
     [visibles]
   );
 
-  const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
+ const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
 
   return (
     <div className="permutantes">
-      {/* ...h3, p y error igual que antes... */}
+      <h3>
+        Permutantes de 4 cifras ({visibles.length} de {grupos.length})
+      </h3>
+      <p>
+        Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
+        {totalHistorico.toLocaleString()} números del histórico.
+      </p>
+      {error && <p className="formulario-error">{error}</p>}
 
-      <div className="tabla-scroll">
-        <table className="tabla-permutantes">
-          <thead>
-            <tr>
-              <th className="col-fija col-1">#</th>
-              <th>Grupo (cronológico)</th>
-              <th className="col-fija col-2">Grupo</th>
-              <th className="col-fija col-3">Combinaciones</th>
-              <th className="col-fija col-4">Cantidad</th>
-              <th>Última vez</th>
-              
-              {columnasPerm.map((_, i) => (
-                <th key={i}>{i + 1}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {visibles.map((g, i) => {
-              const c = cronologicos[i];
-              return (
-                <tr key={g.etiqueta}>
-                  <td className="col-fija col-1">{i + 1}</td>
+      <div className="permutantes-dos-grupos">
+        {/* ============ GRUPO 1: CRONOLÓGICO ============ */}
+        <div className="perm-scroll perm-scroll-cron">
+          <table className="tabla-permutantes tabla-cron">
+            <thead>
+              <tr>
+                <th className="sticky-1">#</th>
+                <th>Grupo (cronológico)</th>
+                <th>Cantidad</th>
+                <th>Cayó como</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cronologicos.map((c, i) => (
+                <tr key={c.etiqueta}>
+                  <td className="sticky-1">{i + 1}</td>
                   <td className="perm-grupo-cron">
-                    {c && (
-                      <>
-                        <strong>{c.etiqueta}</strong>
-                        <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
-                      </>
-                    )}
+                    <strong>{c.etiqueta}</strong>{" "}
+                    <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
                   </td>
-                  <td className="col-fija col-2 perm-grupo">{g.etiqueta}</td>
-                  <td className="col-fija col-3">{g.permutaciones.length}</td>
-                  <td className="col-fija col-4 perm-cantidad">{g.cantidad}</td>
-                  <td className="perm-fecha">{formatoFecha(g.ultimaFecha)}</td>
-                  
+                  <td className="perm-cantidad">{c.cantidad}</td>
+                  <td className="perm-ultima-comb">{c.ultimaCombinacion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ============ GRUPO 2: ORDEN NORMAL + COMBINACIONES ============ */}
+        <div className="perm-scroll perm-scroll-normal">
+          <table className="tabla-permutantes tabla-normal">
+            <thead>
+              <tr>
+                <th className="sticky-1">#</th>
+                <th className="sticky-2">Grupo</th>
+                <th className="sticky-3">Cantidad</th>
+                <th className="sticky-4">Combinaciones</th>
+                {columnasPerm.map((_, i) => (
+                  <th key={i}>{i + 1}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibles.map((g, i) => (
+                <tr key={g.etiqueta}>
+                  <td className="sticky-1">{i + 1}</td>
+                  <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
+                  <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
+                  <td className="sticky-4">{g.permutaciones.length}</td>
                   {columnasPerm.map((_, j) => {
                     const p = g.permutaciones[j];
                     return (
@@ -148,10 +183,10 @@ export default function PantallaPermutantes({ busqueda }) {
                     );
                   })}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

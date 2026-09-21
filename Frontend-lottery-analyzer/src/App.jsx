@@ -211,7 +211,7 @@ export default function App() {
        className={ventana === "permutantes" ? "activa" : ""}
       onClick={() => setVentana("permutantes")}
            >
-          Permutantes
+          Combinado 4 digitos
           </button>
           <button
       className={ventana === "topperm" ? "activa" : ""}

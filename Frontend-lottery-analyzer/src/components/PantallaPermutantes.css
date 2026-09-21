@@ -1,68 +1,175 @@
-.permutantes .tabla-scroll {
+/* ===== Layout ===== */
+.permutantes-dos-grupos {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.perm-scroll {
+  overflow: auto;                 /* cada uno con su propio scroll */
   max-height: 75vh;
-  overflow: auto;              /* scroll vertical y horizontal */
-  border: 1px solid #9ca3af;
-  background: white;
+  background: #fff;
+  border: 1px solid #a6a6a6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+.perm-scroll-cron {
+  flex: 0 0 auto;
+  width: 400px;
+  max-width: 40%;
+}
+
+.perm-scroll-normal {
+  flex: 1 1 0;
+  min-width: 0;                   /* necesario para el scroll horizontal dentro de flex */
+}
+
+/* ===== Tabla base tipo Excel ===== */
 .permutantes .tabla-permutantes {
-  border-collapse: separate;   /* necesario para que sticky mantenga los bordes */
+  border-collapse: separate;      /* para que sticky conserve los bordes */
   border-spacing: 0;
-  font-size: 0.9rem;
+  font-size: 13px;
+  font-family: "Calibri", "Segoe UI", system-ui, sans-serif;
 }
 
-/* Cuadrícula tipo Excel: borde en cada celda */
 .permutantes .tabla-permutantes th,
 .permutantes .tabla-permutantes td {
-  color: #000 !important;
-  border-right: 1px solid #c4c9d1;
-  border-bottom: 1px solid #c4c9d1;
-  padding: 6px 8px;
+  height: 28px;
+  padding: 0 10px;
   text-align: center;
   white-space: nowrap;
-  background: white;
+  color: #000 !important;
+  background: #fff;
+  border-right: 1px solid #d4d4d4;
+  border-bottom: 1px solid #d4d4d4;
+  box-sizing: border-box;
 }
 
-/* Encabezado fijo arriba */
+/* Encabezados de columna (gris Excel) */
 .permutantes .tabla-permutantes thead th {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: #e5e7eb;
-  font-weight: 700;
-  border-bottom: 2px solid #6b7280;
+  background: #f3f3f3;
+  font-weight: 600;
+  font-size: 12px;
+  color: #444 !important;
+  border-bottom: 1px solid #a6a6a6;
+  border-right: 1px solid #c8c8c8;
 }
 
-/* Filas alternas (cebra) */
+/* Cebra suave */
 .permutantes .tabla-permutantes tbody tr:nth-child(even) td {
-  background: #f3f4f6;
+  background: #f7f9fb;
 }
 
-/* Columnas fijas a la izquierda: #, Grupo, Cant. */
-.permutantes .col-fija {
+/* Fila bajo el mouse */
+.permutantes .tabla-permutantes tbody tr:hover td {
+  background: #dbe9f8 !important;
+}
+
+/* ===== Columna "#" como cabecera de fila de Excel ===== */
+.permutantes .tabla-permutantes tbody td.sticky-1 {
+  background: #f3f3f3 !important;
+  color: #555 !important;
+  font-size: 12px;
+  font-weight: 600;
+  border-right: 1px solid #a6a6a6;
+}
+
+.permutantes .tabla-permutantes tbody tr:hover td.sticky-1 {
+  background: #cfe0f3 !important;
+}
+
+/* ===== Columnas fijas ===== */
+.permutantes .sticky-1,
+.permutantes .sticky-2,
+.permutantes .sticky-3,
+.permutantes .sticky-4 {
   position: sticky;
   z-index: 2;
 }
-.permutantes thead .col-fija {
-  z-index: 4;                  /* esquina: por encima de todo */
+.permutantes thead .sticky-1,
+.permutantes thead .sticky-2,
+.permutantes thead .sticky-3,
+.permutantes thead .sticky-4 {
+  z-index: 5;                     /* esquina: por encima del header y de las columnas fijas */
 }
-.permutantes .col-1 { left: 0;     min-width: 48px;  width: 48px; }
-.permutantes .col-2 { left: 48px;  min-width: 80px;  width: 80px; }
-.permutantes .col-3 { left: 128px; min-width: 120px; width: 120px; }
-.permutantes .col-4 {
-  left: 248px;
-  min-width: 80px;
-  width: 80px;
-  border-right: 2px solid #6b7280;   /* separa lo fijo de lo que se desplaza */
+
+/* Tabla normal: 4 columnas fijas */
+.tabla-normal .sticky-1 { left: 0;     min-width: 46px;  width: 46px;  }
+.tabla-normal .sticky-2 { left: 46px;  min-width: 90px;  width: 90px;  }
+.tabla-normal .sticky-3 { left: 136px; min-width: 80px;  width: 80px;  }
+.tabla-normal .sticky-4 { left: 216px; min-width: 110px; width: 110px; }
+
+/* Sombra en el borde de la última columna fija, para notar que hay contenido debajo al deslizar */
+.tabla-normal .sticky-4 {
+  border-right: 1px solid #a6a6a6;
+  box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.18);
+}
+
+/* Tabla cronológica: solo se fija el # */
+.tabla-cron .sticky-1 {
+  left: 0;
+  min-width: 46px;
+  width: 46px;
+}
+
+/* Encabezado de la cronológica con un tono verde para distinguir los dos grupos */
+.tabla-cron thead th {
+  background: #e2efe4 !important;
+}
+.tabla-cron thead th.sticky-1 {
+  background: #d3e6d6 !important;
+}
+
+/* ===== Contenido de celdas ===== */
+.permutantes .perm-grupo {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  font-family: "IBM Plex Mono", monospace;
 }
 
 .permutantes .perm-cantidad {
   font-weight: 700;
 }
 
-/* Cuántas veces ha caído cada permutación (número pequeño junto al número) */
+.permutantes .perm-grupo-cron {
+  text-align: left !important;
+  min-width: 170px;
+}
+
+.permutantes .perm-grupo-cron strong {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px;
+  letter-spacing: 1px;
+  margin-right: 8px;
+}
+
+.permutantes .perm-grupo-cron .perm-veces {
+  margin-left: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6b7280 !important;
+  vertical-align: baseline;
+}
+
+.permutantes .perm-ultima-comb {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 700;
+  color: #166534 !important;
+  letter-spacing: 1px;
+}
+
+/* Celdas de permutaciones */
+.permutantes .perm-celda {
+  font-family: "IBM Plex Mono", monospace;
+  min-width: 68px;
+}
+
 .permutantes .perm-veces {
-  margin-left: 5px;
+  margin-left: 4px;
   font-size: 0.7em;
   font-family: system-ui, sans-serif;
   color: #4338ca !important;
@@ -70,25 +177,16 @@
   vertical-align: super;
 }
 
-.permutantes .perm-grupo {
-  font-weight: 700;
-  font-size: 1.05em;
-  letter-spacing: 1px;
-}
-
-/* Celdas de permutaciones */
-.permutantes .perm-celda {
-  font-family: "IBM Plex Mono", monospace;
-  min-width: 60px;
-}
-
-/* Celdas sin permutación: más apagadas */
 .permutantes .tabla-permutantes tbody td.perm-vacia {
   background: #fafafa;
 }
 
-/* Fila donde te paras */
-.permutantes .tabla-permutantes tbody tr:hover td {
-  background: #c7d2fe !important;    /* azul-morado claro */
-  color: #1e1b4b !important;
+/* ===== Scrollbars discretos ===== */
+.perm-scroll::-webkit-scrollbar { width: 12px; height: 12px; }
+.perm-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+.perm-scroll::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border: 2px solid #f1f1f1;
+  border-radius: 6px;
 }
+.perm-scroll::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }

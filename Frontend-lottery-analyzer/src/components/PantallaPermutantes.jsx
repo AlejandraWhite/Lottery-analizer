@@ -55,7 +55,7 @@ function grupoCoincide(digitos, busqueda) {
   return true;
 }
 
-export default function PantallaPermutantes({ busqueda, busquedaFecha }) {
+export default function PantallaPermutantes({ busqueda, busquedaFecha, modoBusqueda = "cualquiera" }) {
   const [conteos, setConteos] = useState({});
   const [ultimasFechas, setUltimasFechas] = useState({});
   const [totalHistorico, setTotalHistorico] = useState(0);
@@ -104,15 +104,41 @@ export default function PantallaPermutantes({ busqueda, busquedaFecha }) {
 const visibles = grupos;
 
 // Coincide por dígitos o por fecha (última vez que cayó el grupo)
-const coincideBusqueda = (g) =>
-  (Boolean(busqueda) && grupoCoincide(g.digitos, busqueda)) ||
-  (Boolean(busquedaFecha) && formatoFecha(g.ultimaFecha).includes(busquedaFecha));
+const ultimasCifras = modoBusqueda === "ultimas2";
+
+// Coincidencia a nivel de fila (grupo)
+const coincideBusqueda = (g) => {
+  const porFecha =
+    Boolean(busquedaFecha) && formatoFecha(g.ultimaFecha).includes(busquedaFecha);
+
+  // En modo "últimas cifras" la fila NO se pinta por dígitos:
+  // solo se marcan las celdas (combinaciones) que terminan en lo buscado.
+  const porDigitos =
+    Boolean(busqueda) && !ultimasCifras && grupoCoincide(g.digitos, busqueda);
+
+  return porDigitos || porFecha;
+};
+
+// Cuántos grupos tienen al menos una combinación que termina en lo buscado
+const grupoTieneFinal = (g) =>
+  Boolean(busqueda) && g.permutaciones.some((p) => p.endsWith(busqueda));
 
 const totalBusqueda =
-  busqueda || busquedaFecha ? visibles.filter(coincideBusqueda).length : 0;
+  busqueda || busquedaFecha
+    ? visibles.filter(
+        (g) => coincideBusqueda(g) || (ultimasCifras && grupoTieneFinal(g))
+      ).length
+    : 0;
 
 const coincideCantidad = (cantidad) =>
   filtroCantidad !== "" && cantidad === Number(filtroCantidad);
+
+// Solo en modo "últimas cifras": la combinación termina en lo que se buscó
+const terminaEnBusqueda = (combinacion) =>
+  modoBusqueda === "ultimas2" &&
+  Boolean(busqueda) &&
+  Boolean(combinacion) &&
+  combinacion.endsWith(busqueda);
 
 const totalCoinciden =
   filtroCantidad === ""
@@ -190,7 +216,9 @@ const totalCoinciden =
       <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
     </td>
     <td className="perm-cantidad">{c.cantidad}</td>
-    <td className="perm-ultima-comb">{c.ultimaCombinacion}</td>
+    <td className={`perm-ultima-comb${terminaEnBusqueda(c.ultimaCombinacion) ? " celda-final" : ""}`}>
+  {c.ultimaCombinacion}
+</td>
   </tr>
 ))}
             </tbody>
@@ -224,14 +252,19 @@ const totalCoinciden =
       <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
       <td className="sticky-4">{g.permutaciones.length}</td>
       {columnasPerm.map((_, j) => {
-        const p = g.permutaciones[j];
-        return (
-          <td key={j} className={p ? "perm-celda" : "perm-celda perm-vacia"}>
-            {p ?? ""}
-            {p && <span className="perm-veces">{conteos[p] || 0}</span>}
-          </td>
-        );
-      })}
+  const p = g.permutaciones[j];
+  return (
+    <td
+      key={j}
+      className={`${p ? "perm-celda" : "perm-celda perm-vacia"}${
+        terminaEnBusqueda(p) ? " celda-final" : ""
+      }`}
+    >
+      {p ?? ""}
+      {p && <span className="perm-veces">{conteos[p] || 0}</span>}
+    </td>
+  );
+})}
     </tr>
   ))}
 </tbody>

@@ -119,6 +119,16 @@
   font-family: "IBM Plex Mono", monospace;
   font-weight: 700;
 }
+/* Combinación que termina en lo buscado (modo "solo últimas cifras") */
+.permutantes .tabla-permutantes tbody td.celda-final {
+  background: #a855f7 !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.permutantes .tabla-permutantes tbody td.celda-final .perm-veces {
+  color: #f3e8ff !important;
+}
 
 @media (max-width: 900px) {
   .top-perm-lista {

@@ -17,6 +17,12 @@ function generarGrupos() {
   return grupos;
 }
 
+function formatoFecha(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
 function permutacionesUnicas(digitos) {
   const resultado = new Set();
   const usar = (resto, actual) => {
@@ -51,6 +57,7 @@ function grupoCoincide(digitos, busqueda) {
 
 export default function PantallaPermutantes({ busqueda }) {
   const [conteos, setConteos] = useState({});
+  const [ultimasFechas, setUltimasFechas] = useState({});
   const [totalHistorico, setTotalHistorico] = useState(0);
   const [error, setError] = useState("");
 
@@ -58,6 +65,7 @@ export default function PantallaPermutantes({ busqueda }) {
     obtenerConteosPermutantes()
       .then((data) => {
         setConteos(data.conteos);
+        setUltimasFechas(data.ultimas_fechas || {});
         setTotalHistorico(data.total);
       })
       .catch((e) => setError(e.message));
@@ -68,56 +76,80 @@ export default function PantallaPermutantes({ busqueda }) {
       generarGrupos().map((digitos) => {
         const permutaciones = permutacionesUnicas(digitos);
         const cantidad = permutaciones.reduce((s, p) => s + (conteos[p] || 0), 0);
-        return { digitos, etiqueta: digitos.join(""), permutaciones, cantidad };
+        // Última vez que cayó CUALQUIER permutación del grupo (ISO se compara como texto)
+        const ultimaFecha = permutaciones.reduce((max, p) => {
+          const f = ultimasFechas[p];
+          return f && (!max || f > max) ? f : max;
+        }, null);
+        return { digitos, etiqueta: digitos.join(""), permutaciones, cantidad, ultimaFecha };
       }),
-    [conteos]
+    [conteos, ultimasFechas]
   );
 
   const visibles = grupos.filter((g) => grupoCoincide(g.digitos, busqueda));
+
+  // Del que cayó hace más tiempo al más reciente (los que nunca han caído no aparecen)
+  const cronologicos = useMemo(
+    () =>
+      visibles
+        .filter((g) => g.ultimaFecha)
+        .sort((a, b) => a.ultimaFecha.localeCompare(b.ultimaFecha)),
+    [visibles]
+  );
+
   const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
 
   return (
     <div className="permutantes">
-      <h3>
-        Permutantes de 4 cifras ({visibles.length} de {grupos.length})
-      </h3>
-      <p>
-        Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
-        {totalHistorico.toLocaleString()} números del histórico.
-      </p>
-      {error && <p className="formulario-error">{error}</p>}
+      {/* ...h3, p y error igual que antes... */}
 
       <div className="tabla-scroll">
         <table className="tabla-permutantes">
           <thead>
             <tr>
               <th className="col-fija col-1">#</th>
+              <th>Grupo (cronológico)</th>
               <th className="col-fija col-2">Grupo</th>
               <th className="col-fija col-3">Combinaciones</th>
               <th className="col-fija col-4">Cantidad</th>
+              <th>Última vez</th>
+              
               {columnasPerm.map((_, i) => (
                 <th key={i}>{i + 1}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {visibles.map((g, i) => (
-              <tr key={g.etiqueta}>
-                <td className="col-fija col-1">{i + 1}</td>
-                <td className="col-fija col-2 perm-grupo">{g.etiqueta}</td>
-                <td className="col-fija col-3">{g.permutaciones.length}</td>
-                <td className="col-fija col-4 perm-cantidad">{g.cantidad}</td>
-                {columnasPerm.map((_, j) => {
-                  const p = g.permutaciones[j];
-                  return (
-                    <td key={j} className={p ? "perm-celda" : "perm-celda perm-vacia"}>
-                      {p ?? ""}
-                      {p && <span className="perm-veces">{conteos[p] || 0}</span>}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {visibles.map((g, i) => {
+              const c = cronologicos[i];
+              return (
+                <tr key={g.etiqueta}>
+                  <td className="col-fija col-1">{i + 1}</td>
+                  <td className="perm-grupo-cron">
+                    {c && (
+                      <>
+                        <strong>{c.etiqueta}</strong>
+                        <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
+                      </>
+                    )}
+                  </td>
+                  <td className="col-fija col-2 perm-grupo">{g.etiqueta}</td>
+                  <td className="col-fija col-3">{g.permutaciones.length}</td>
+                  <td className="col-fija col-4 perm-cantidad">{g.cantidad}</td>
+                  <td className="perm-fecha">{formatoFecha(g.ultimaFecha)}</td>
+                  
+                  {columnasPerm.map((_, j) => {
+                    const p = g.permutaciones[j];
+                    return (
+                      <td key={j} className={p ? "perm-celda" : "perm-celda perm-vacia"}>
+                        {p ?? ""}
+                        {p && <span className="perm-veces">{conteos[p] || 0}</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

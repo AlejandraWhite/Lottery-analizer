@@ -1,7 +1,7 @@
 /* ===== Layout ===== */
 .permutantes-dos-grupos {
   display: flex;
-  gap: 16px;
+  gap: 8px;
   align-items: flex-start;
 }
 
@@ -15,13 +15,19 @@
 
 .perm-scroll-cron {
   flex: 0 0 auto;
-  width: 400px;
-  max-width: 40%;
+  width: 320px;      /* antes 400px */
+  max-width: 32%;    /* antes 40% */
+}
+
+.perm-scroll-frecuencia {
+  flex: 0 0 auto;
+  width: 260px;
+  max-width: 26%;
 }
 
 .perm-scroll-normal {
   flex: 1 1 0;
-  min-width: 0;                   /* necesario para el scroll horizontal dentro de flex */
+  min-width: 0;
 }
 
 .perm-filtros {
@@ -80,7 +86,7 @@
 .permutantes .tabla-permutantes th,
 .permutantes .tabla-permutantes td {
   height: 28px;
-  padding: 0 10px;
+  padding: 0 6px;          /* antes 0 10px */
   text-align: center;
   white-space: nowrap;
   color: #000 !important;
@@ -103,6 +109,14 @@
   border-right: 1px solid #c8c8c8;
 }
 
+.permutantes {
+  width: calc(100vw - 80px);
+  max-width: calc(100vw - 80px);
+  position: relative;
+  left: 50%;
+  margin-left: calc(-50vw + 40px);
+  box-sizing: border-box;
+}
 /* Cebra suave */
 .permutantes .tabla-permutantes tbody tr:nth-child(even) td {
   background: #f7f9fb;
@@ -239,3 +253,12 @@
   border-radius: 6px;
 }
 .perm-scroll::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
+
+@media (max-width: 900px) {
+  .permutantes {
+    width: 100%;
+    max-width: 100%;
+    left: 0;
+    margin-left: 0;
+  }
+}

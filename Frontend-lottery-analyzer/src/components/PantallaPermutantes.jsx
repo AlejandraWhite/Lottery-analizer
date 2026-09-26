@@ -72,78 +72,78 @@ export default function PantallaPermutantes({ busqueda, busquedaFecha, modoBusqu
       .catch((e) => setError(e.message));
   }, []);
 
- const grupos = useMemo(
-  () =>
-    generarGrupos().map((digitos) => {
-      const permutaciones = permutacionesUnicas(digitos);
-      const cantidad = permutaciones.reduce((s, p) => s + (conteos[p] || 0), 0);
+  const grupos = useMemo(
+    () =>
+      generarGrupos().map((digitos) => {
+        const permutaciones = permutacionesUnicas(digitos);
+        const cantidad = permutaciones.reduce((s, p) => s + (conteos[p] || 0), 0);
 
-      // Permutación que cayó más recientemente y su fecha
-      let ultimaFecha = null;
-      let ultimaCombinacion = null;
-      for (const p of permutaciones) {
-        const f = ultimasFechas[p];
-        if (f && (!ultimaFecha || f > ultimaFecha)) {
-          ultimaFecha = f;
-          ultimaCombinacion = p;
+        // Permutación que cayó más recientemente y su fecha
+        let ultimaFecha = null;
+        let ultimaCombinacion = null;
+        for (const p of permutaciones) {
+          const f = ultimasFechas[p];
+          if (f && (!ultimaFecha || f > ultimaFecha)) {
+            ultimaFecha = f;
+            ultimaCombinacion = p;
+          }
         }
-      }
 
-      return {
-        digitos,
-        etiqueta: digitos.join(""),
-        permutaciones,
-        cantidad,
-        ultimaFecha,
-        ultimaCombinacion,
-      };
-    }),
-  [conteos, ultimasFechas]
-);
+        return {
+          digitos,
+          etiqueta: digitos.join(""),
+          permutaciones,
+          cantidad,
+          ultimaFecha,
+          ultimaCombinacion,
+        };
+      }),
+    [conteos, ultimasFechas]
+  );
 
-const visibles = grupos;
+  const visibles = grupos;
 
-// Coincide por dígitos o por fecha (última vez que cayó el grupo)
-const ultimasCifras = modoBusqueda === "ultimas2";
+  // Coincide por dígitos o por fecha (última vez que cayó el grupo)
+  const ultimasCifras = modoBusqueda === "ultimas2";
 
-// Coincidencia a nivel de fila (grupo)
-const coincideBusqueda = (g) => {
-  const porFecha =
-    Boolean(busquedaFecha) && formatoFecha(g.ultimaFecha).includes(busquedaFecha);
+  // Coincidencia a nivel de fila (grupo)
+  const coincideBusqueda = (g) => {
+    const porFecha =
+      Boolean(busquedaFecha) && formatoFecha(g.ultimaFecha).includes(busquedaFecha);
 
-  // En modo "últimas cifras" la fila NO se pinta por dígitos:
-  // solo se marcan las celdas (combinaciones) que terminan en lo buscado.
-  const porDigitos =
-    Boolean(busqueda) && !ultimasCifras && grupoCoincide(g.digitos, busqueda);
+    // En modo "últimas cifras" la fila NO se pinta por dígitos:
+    // solo se marcan las celdas (combinaciones) que terminan en lo buscado.
+    const porDigitos =
+      Boolean(busqueda) && !ultimasCifras && grupoCoincide(g.digitos, busqueda);
 
-  return porDigitos || porFecha;
-};
+    return porDigitos || porFecha;
+  };
 
-// Cuántos grupos tienen al menos una combinación que termina en lo buscado
-const grupoTieneFinal = (g) =>
-  Boolean(busqueda) && g.permutaciones.some((p) => p.endsWith(busqueda));
+  // Cuántos grupos tienen al menos una combinación que termina en lo buscado
+  const grupoTieneFinal = (g) =>
+    Boolean(busqueda) && g.permutaciones.some((p) => p.endsWith(busqueda));
 
-const totalBusqueda =
-  busqueda || busquedaFecha
-    ? visibles.filter(
-        (g) => coincideBusqueda(g) || (ultimasCifras && grupoTieneFinal(g))
-      ).length
-    : 0;
+  const totalBusqueda =
+    busqueda || busquedaFecha
+      ? visibles.filter(
+          (g) => coincideBusqueda(g) || (ultimasCifras && grupoTieneFinal(g))
+        ).length
+      : 0;
 
-const coincideCantidad = (cantidad) =>
-  filtroCantidad !== "" && cantidad === Number(filtroCantidad);
+  const coincideCantidad = (cantidad) =>
+    filtroCantidad !== "" && cantidad === Number(filtroCantidad);
 
-// Solo en modo "últimas cifras": la combinación termina en lo que se buscó
-const terminaEnBusqueda = (combinacion) =>
-  modoBusqueda === "ultimas2" &&
-  Boolean(busqueda) &&
-  Boolean(combinacion) &&
-  combinacion.endsWith(busqueda);
+  // Solo en modo "últimas cifras": la combinación termina en lo que se buscó
+  const terminaEnBusqueda = (combinacion) =>
+    modoBusqueda === "ultimas2" &&
+    Boolean(busqueda) &&
+    Boolean(combinacion) &&
+    combinacion.endsWith(busqueda);
 
-const totalCoinciden =
-  filtroCantidad === ""
-    ? 0
-    : visibles.filter((g) => g.cantidad === Number(filtroCantidad)).length;
+  const totalCoinciden =
+    filtroCantidad === ""
+      ? 0
+      : visibles.filter((g) => g.cantidad === Number(filtroCantidad)).length;
 
   // Del que cayó hace más tiempo al más reciente (los que nunca han caído no aparecen)
   const cronologicos = useMemo(
@@ -154,43 +154,53 @@ const totalCoinciden =
     [visibles]
   );
 
- const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
+  // Del que más cae al que menos cae
+  const porFrecuencia = useMemo(
+    () =>
+      [...visibles].sort((a, b) => {
+        if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
+        return a.etiqueta.localeCompare(b.etiqueta); // desempate estable
+      }),
+    [visibles]
+  );
+
+  const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
 
   return (
     <div className="permutantes">
       <h3>
-  Permutantes de 4 cifras ({grupos.length})
-  {(busqueda || busquedaFecha) && ` · ${totalBusqueda} coinciden`}
-</h3>
+        Permutantes de 4 cifras ({grupos.length})
+        {(busqueda || busquedaFecha) && ` · ${totalBusqueda} coinciden`}
+      </h3>
       <p>
         Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
         {totalHistorico.toLocaleString()} números del histórico.
       </p>
-       <div className="perm-filtros">
-  <label>
-    Cantidad:
-    <input
-      type="number"
-      min="0"
-      inputMode="numeric"
-      placeholder="Ej: 5"
-      value={filtroCantidad}
-      onChange={(e) => setFiltroCantidad(e.target.value)}
-    />
-  </label>
-  {filtroCantidad !== "" && (
-    <button type="button" className="perm-limpiar" onClick={() => setFiltroCantidad("")}>
-      ✕ Limpiar
-    </button>  
-  )}
-  {filtroCantidad !== "" && (
-  <span className="perm-contador">{totalCoinciden} coinciden</span>
-)}
-</div>
+      <div className="perm-filtros">
+        <label>
+          Cantidad:
+          <input
+            type="number"
+            min="0"
+            inputMode="numeric"
+            placeholder="Ej: 5"
+            value={filtroCantidad}
+            onChange={(e) => setFiltroCantidad(e.target.value)}
+          />
+        </label>
+        {filtroCantidad !== "" && (
+          <button type="button" className="perm-limpiar" onClick={() => setFiltroCantidad("")}>
+            ✕ Limpiar
+          </button>
+        )}
+        {filtroCantidad !== "" && (
+          <span className="perm-contador">{totalCoinciden} coinciden</span>
+        )}
+      </div>
       {error && <p className="formulario-error">{error}</p>}
 
       <div className="permutantes-dos-grupos">
-     
+
         {/* ============ GRUPO 1: CRONOLÓGICO ============ */}
         <div className="perm-scroll perm-scroll-cron">
           <table className="tabla-permutantes tabla-cron">
@@ -204,70 +214,99 @@ const totalCoinciden =
             </thead>
             <tbody>
               {cronologicos.map((c, i) => (
-  <tr
-  key={c.etiqueta}
-  className={`${coincideBusqueda(c) ? "fila-busqueda" : ""} ${
-    coincideCantidad(c.cantidad) ? "fila-cantidad" : ""
-  }`}
->
-    <td className="sticky-1">{i + 1}</td>
-    <td className="perm-grupo-cron">
-      <strong>{c.etiqueta}</strong>{" "}
-      <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
-    </td>
-    <td className="perm-cantidad">{c.cantidad}</td>
-    <td className={`perm-ultima-comb${terminaEnBusqueda(c.ultimaCombinacion) ? " celda-final" : ""}`}>
-  {c.ultimaCombinacion}
-</td>
-  </tr>
-))}
+                <tr
+                  key={c.etiqueta}
+                  className={`${coincideBusqueda(c) ? "fila-busqueda" : ""} ${
+                    coincideCantidad(c.cantidad) ? "fila-cantidad" : ""
+                  }`}
+                >
+                  <td className="sticky-1">{i + 1}</td>
+                  <td className="perm-grupo-cron">
+                    <strong>{c.etiqueta}</strong>{" "}
+                    <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
+                  </td>
+                  <td className="perm-cantidad">{c.cantidad}</td>
+                  <td className={`perm-ultima-comb${terminaEnBusqueda(c.ultimaCombinacion) ? " celda-final" : ""}`}>
+                    {c.ultimaCombinacion}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* ============ GRUPO 2: ORDEN NORMAL + COMBINACIONES ============ */}
+        {/* ============ GRUPO 2: POR FRECUENCIA (más cae -> menos cae) ============ */}
+        <div className="perm-scroll perm-scroll-frecuencia">
+          <table className="tabla-permutantes tabla-frecuencia">
+            <thead>
+              <tr>
+                <th className="sticky-1">#</th>
+                <th>Grupo (por frecuencia)</th>
+                <th>Cantidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              {porFrecuencia.map((g, i) => (
+                <tr
+                  key={g.etiqueta}
+                  className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
+                    coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
+                  }`}
+                >
+                  <td className="sticky-1">{i + 1}</td>
+                  <td className="perm-grupo-frecuencia">
+                    <strong>{g.etiqueta}</strong>
+                  </td>
+                  <td className="perm-cantidad">{g.cantidad}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ============ GRUPO 3: ORDEN NORMAL + COMBINACIONES ============ */}
         <div className="perm-scroll perm-scroll-normal">
           <table className="tabla-permutantes tabla-normal">
             <thead>
-  <tr>
-    <th className="sticky-1">#</th>
-    <th className="sticky-2">Grupo</th>
-    <th className="sticky-3">Cantidad</th>
-    <th className="sticky-4">Combinaciones</th>
-    {columnasPerm.map((_, i) => (
-      <th key={i}>{i + 1}</th>
-    ))}
-  </tr>
-</thead>
-           <tbody>
-  {visibles.map((g, i) => (
-    <tr
-      key={g.etiqueta}
-      className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
-        coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
-      }`}
-    >
-      <td className="sticky-1">{i + 1}</td>
-      <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
-      <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
-      <td className="sticky-4">{g.permutaciones.length}</td>
-      {columnasPerm.map((_, j) => {
-  const p = g.permutaciones[j];
-  return (
-    <td
-      key={j}
-      className={`${p ? "perm-celda" : "perm-celda perm-vacia"}${
-        terminaEnBusqueda(p) ? " celda-final" : ""
-      }`}
-    >
-      {p ?? ""}
-      {p && <span className="perm-veces">{conteos[p] || 0}</span>}
-    </td>
-  );
-})}
-    </tr>
-  ))}
-</tbody>
+              <tr>
+                <th className="sticky-1">#</th>
+                <th className="sticky-2">Grupo</th>
+                <th className="sticky-3">Cantidad</th>
+                <th className="sticky-4">Combinaciones</th>
+                {columnasPerm.map((_, i) => (
+                  <th key={i}>{i + 1}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibles.map((g, i) => (
+                <tr
+                  key={g.etiqueta}
+                  className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
+                    coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
+                  }`}
+                >
+                  <td className="sticky-1">{i + 1}</td>
+                  <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
+                  <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
+                  <td className="sticky-4">{g.permutaciones.length}</td>
+                  {columnasPerm.map((_, j) => {
+                    const p = g.permutaciones[j];
+                    return (
+                      <td
+                        key={j}
+                        className={`${p ? "perm-celda" : "perm-celda perm-vacia"}${
+                          terminaEnBusqueda(p) ? " celda-final" : ""
+                        }`}
+                      >
+                        {p ?? ""}
+                        {p && <span className="perm-veces">{conteos[p] || 0}</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
           </table>
         </div>
       </div>

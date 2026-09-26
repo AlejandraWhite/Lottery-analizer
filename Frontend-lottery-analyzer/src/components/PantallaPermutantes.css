@@ -212,6 +212,10 @@
   font-family: "IBM Plex Mono", monospace;
   min-width: 68px;
 }
+.perm-ranking {
+  font-weight: 600;
+  text-align: center;
+}
 
 .permutantes .perm-veces {
   margin-left: 4px;

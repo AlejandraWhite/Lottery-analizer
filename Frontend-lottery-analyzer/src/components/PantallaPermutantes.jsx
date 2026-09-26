@@ -173,7 +173,7 @@ export default function PantallaPermutantes({ busqueda, busquedaFecha, modoBusqu
         {(busqueda || busquedaFecha) && ` · ${totalBusqueda} coinciden`}
       </h3>
       <p>
-        Ordenados de menor a mayor, con el 0 como el mayor. Basado en{" "}
+        Ordenados del que más cae al que menos cae. Basado en{" "}
         {totalHistorico.toLocaleString()} números del histórico.
       </p>
       <div className="perm-filtros">
@@ -235,36 +235,7 @@ export default function PantallaPermutantes({ busqueda, busquedaFecha, modoBusqu
           </table>
         </div>
 
-        {/* ============ GRUPO 2: POR FRECUENCIA (más cae -> menos cae) ============ */}
-        <div className="perm-scroll perm-scroll-frecuencia">
-          <table className="tabla-permutantes tabla-frecuencia">
-            <thead>
-              <tr>
-                <th className="sticky-1">#</th>
-                <th>Grupo (por frecuencia)</th>
-                <th>Cantidad</th>
-              </tr>
-            </thead>
-            <tbody>
-              {porFrecuencia.map((g, i) => (
-                <tr
-                  key={g.etiqueta}
-                  className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
-                    coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
-                  }`}
-                >
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="perm-grupo-frecuencia">
-                    <strong>{g.etiqueta}</strong>
-                  </td>
-                  <td className="perm-cantidad">{g.cantidad}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* ============ GRUPO 3: ORDEN NORMAL + COMBINACIONES ============ */}
+        {/* ============ GRUPO 2: ORDEN POR FRECUENCIA + COMBINACIONES ============ */}
         <div className="perm-scroll perm-scroll-normal">
           <table className="tabla-permutantes tabla-normal">
             <thead>
@@ -279,7 +250,7 @@ export default function PantallaPermutantes({ busqueda, busquedaFecha, modoBusqu
               </tr>
             </thead>
             <tbody>
-              {visibles.map((g, i) => (
+              {porFrecuencia.map((g, i) => (
                 <tr
                   key={g.etiqueta}
                   className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${

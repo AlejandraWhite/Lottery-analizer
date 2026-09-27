@@ -6,17 +6,26 @@
 }
 
 .perm-scroll {
-  overflow: auto;                 /* cada uno con su propio scroll */
+  overflow-y: auto;      /* antes: overflow: auto (aplicaba a ambos ejes) */
   max-height: 75vh;
   background: #fff;
   border: 1px solid #a6a6a6;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
+/* Grupo 1 (cronológico): sin scroll horizontal, se ve completo */
 .perm-scroll-cron {
   flex: 0 0 auto;
-  width: 320px;      /* antes 400px */
-  max-width: 32%;    /* antes 40% */
+  width: auto;          /* antes: 400px fijo */
+  max-width: none;      /* antes: 40% */
+  overflow-x: visible;  /* que no recorte ni scrollee horizontalmente */
+}
+
+/* Grupo 2 (normal): sí scrollea horizontalmente */
+.perm-scroll-normal {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .perm-scroll-frecuencia {
@@ -25,10 +34,6 @@
   max-width: 26%;
 }
 
-.perm-scroll-normal {
-  flex: 1 1 0;
-  min-width: 0;
-}
 
 .perm-filtros {
   display: flex;

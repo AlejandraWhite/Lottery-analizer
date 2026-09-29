@@ -17,6 +17,7 @@ import AvisoScraping from "./components/AvisoScraping";
 import ErrorBoundary from "./components/ErrorBoundary";
 import PantallaPermutantes from "./components/PantallaPermutantes";
 import PantallaTopPermutantes from "./components/PantallaTopPermutantes";
+import PantallaPermutantes3 from "./components/PantallaPermutantes3";
 import "./index.css";
 
 export default function App() {
@@ -208,6 +209,12 @@ export default function App() {
             Viernes
           </button>
           <button
+       className={ventana === "permutantes3" ? "activa" : ""}
+      onClick={() => setVentana("permutantes3")}
+           >
+         combinados 3 digitos
+          </button>
+          <button
        className={ventana === "permutantes" ? "activa" : ""}
       onClick={() => setVentana("permutantes")}
            >
@@ -261,6 +268,13 @@ export default function App() {
 ventana === "historico4" ? (
   <PantallaHistorico4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 ) :
+ventana === "permutantes3" ? (
+  <PantallaPermutantes3
+    busqueda={busqueda}
+    busquedaFecha={busquedaFecha}
+    modoBusqueda={modoBusqueda}
+  />
+):
 ventana === "permutantes" ? (
   <PantallaPermutantes
     busqueda={busqueda}

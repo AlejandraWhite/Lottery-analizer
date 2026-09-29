@@ -255,3 +255,9 @@ export async function obtenerTopPermutantes(limite = 10) {
   if (!res.ok) throw new Error("No se pudo cargar el top de permutantes");
   return res.json();
 }
+
+export async function obtenerConteosPermutantes3() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/permutantes-3`);
+  if (!res.ok) throw new Error("No se pudieron cargar los conteos de 3 cifras");
+  return res.json();
+}

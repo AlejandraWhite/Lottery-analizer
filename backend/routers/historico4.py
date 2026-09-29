@@ -62,6 +62,10 @@ async def importar_excel_historico_4(
 def resumen(db: Session = Depends(get_db)):
     return servicio.resumen_historico(db)
 
+@router.get("/permutantes-3")
+def permutantes_3(db: Session = Depends(get_db)):
+    return servicio.conteos_permutantes_3(db)
+
 
 @router.get("")
 def listar(

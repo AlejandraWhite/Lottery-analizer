@@ -360,3 +360,36 @@ def backfill_desde_resultado(db: Session) -> int:
 
     db.commit()
     return agregados
+
+CIFRAS_PERMUTANTES_3 = "ultimas"
+ 
+ 
+def conteos_permutantes_3(db: Session, cifras: str = CIFRAS_PERMUTANTES_3) -> dict:
+    """
+    Cuenta cuántas veces cayó cada número de 3 cifras (000..999) y cuándo
+    fue la última vez, todo agrupado en la base de datos (no se traen
+    los ~20 años de filas a Python).
+ 
+    Devuelve el mismo formato que el de 4 cifras:
+      {"conteos": {"083": 12, ...}, "ultimas_fechas": {"083": "2026-06-27", ...}, "total": N}
+    Las filas raras (numero NULL o no estándar) se ignoran aquí, siguen
+    guardadas en la tabla.
+    """
+    inicio = 2 if cifras == "ultimas" else 1
+    tres = func.substr(ResultadoHistorico4.numero, inicio, 3).label("tres")
+ 
+    filas = (
+        db.query(tres, func.count(ResultadoHistorico4.id), func.max(ResultadoHistorico4.fecha))
+        .filter(ResultadoHistorico4.numero.op("~")(r"^\d{4}$"))  # PostgreSQL
+        .group_by(tres)
+        .all()
+    )
+ 
+    conteos, ultimas_fechas, total = {}, {}, 0
+    for tres_cifras, cantidad, ultima in filas:
+        conteos[tres_cifras] = cantidad
+        total += cantidad
+        if ultima is not None:
+            ultimas_fechas[tres_cifras] = ultima.isoformat()
+ 
+    return {"conteos": conteos, "ultimas_fechas": ultimas_fechas, "total": total}

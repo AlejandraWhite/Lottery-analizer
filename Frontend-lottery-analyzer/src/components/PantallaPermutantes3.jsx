@@ -138,15 +138,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
       ? 0
       : visibles.filter((g) => g.cantidad === Number(filtroCantidad)).length;
 
-  // Del que cayó hace más tiempo al más reciente (los que nunca han caído no aparecen)
-  const cronologicos = useMemo(
-    () =>
-      visibles
-        .filter((g) => g.ultimaFecha)
-        .sort((a, b) => a.ultimaFecha.localeCompare(b.ultimaFecha)),
-    [visibles]
-  );
-
   // Del que más cae al que menos cae
   const porFrecuencia = useMemo(
     () =>
@@ -156,6 +147,51 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
       }),
     [visibles]
   );
+
+  // Las 1000 combinaciones exactas (000 a 999), de la que cayó hace más
+  // tiempo a la más reciente. Las que nunca han caído van al final.
+  const todas = useMemo(
+    () =>
+      Array.from({ length: 1000 }, (_, i) => {
+        const combinacion = String(i).padStart(3, "0");
+        return {
+          combinacion,
+          cantidad: conteos[combinacion] || 0,
+          ultimaFecha: ultimasFechas[combinacion] || null,
+        };
+      }).sort((a, b) => {
+        if (a.ultimaFecha && b.ultimaFecha) {
+          if (a.ultimaFecha !== b.ultimaFecha)
+            return a.ultimaFecha.localeCompare(b.ultimaFecha); // más antigua primero
+          return a.combinacion.localeCompare(b.combinacion); // mismo día: por número
+        }
+        if (a.ultimaFecha) return -1; // las que sí han caído primero
+        if (b.ultimaFecha) return 1;
+        return a.combinacion.localeCompare(b.combinacion); // nunca han caído
+      }),
+    [conteos, ultimasFechas]
+  );
+
+  // Las mismas 1000 combinaciones, del que más cae al que menos cae
+  const todasPorFrecuencia = useMemo(
+    () =>
+      [...todas].sort((a, b) => {
+        if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
+        return a.combinacion.localeCompare(b.combinacion); // desempate estable
+      }),
+    [todas]
+  );
+
+  const coincideBusquedaTodas = (t) => {
+    const porFecha =
+      Boolean(busquedaFecha) && formatoFecha(t.ultimaFecha).includes(busquedaFecha);
+    const porNumero =
+      Boolean(busqueda) &&
+      (ultimasCifras
+        ? t.combinacion.endsWith(busqueda)
+        : t.combinacion.includes(busqueda));
+    return porNumero || porFecha;
+  };
 
   const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
 
@@ -194,34 +230,62 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
 
       <div className="permutantes-dos-grupos">
 
-        {/* ============ CRONOLÓGICO: por última vez que cayó ============ */}
+        {/* ============ TODAS LAS COMBINACIONES 000-999 ============ */}
         <div className="perm-scroll perm-scroll-cron">
           <table className="tabla-permutantes tabla-cron">
             <thead>
               <tr>
                 <th className="sticky-1">#</th>
-                <th>Grupo (cronológico)</th>
+                <th>Combinación</th>
+                <th>Última vez</th>
                 <th>Cantidad</th>
-                <th>Cayó como</th>
               </tr>
             </thead>
             <tbody>
-              {cronologicos.map((c, i) => (
+              {todas.map((t, i) => (
                 <tr
-                  key={c.etiqueta}
-                  className={`${coincideBusqueda(c) ? "fila-busqueda" : ""} ${
-                    coincideCantidad(c.cantidad) ? "fila-cantidad" : ""
+                  key={t.combinacion}
+                  className={`${coincideBusquedaTodas(t) ? "fila-busqueda" : ""} ${
+                    coincideCantidad(t.cantidad) ? "fila-cantidad" : ""
                   }`}
                 >
                   <td className="sticky-1">{i + 1}</td>
                   <td className="perm-grupo-cron">
-                    <strong>{c.etiqueta}</strong>{" "}
-                    <span className="perm-veces">{formatoFecha(c.ultimaFecha)}</span>
+                    <strong>{t.combinacion}</strong>
                   </td>
-                  <td className="perm-cantidad">{c.cantidad}</td>
-                  <td className={`perm-ultima-comb${terminaEnBusqueda(c.ultimaCombinacion) ? " celda-final" : ""}`}>
-                    {c.ultimaCombinacion}
+                  <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
+                  <td className="perm-cantidad">{t.cantidad}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ============ TODAS 000-999: DEL QUE MÁS CAE AL QUE MENOS CAE ============ */}
+        <div className="perm-scroll perm-scroll-cron">
+          <table className="tabla-permutantes tabla-cron">
+            <thead>
+              <tr>
+                <th className="sticky-1">#</th>
+                <th>Combinación</th>
+                <th>Cantidad</th>
+                <th>Última vez</th>
+              </tr>
+            </thead>
+            <tbody>
+              {todasPorFrecuencia.map((t, i) => (
+                <tr
+                  key={t.combinacion}
+                  className={`${coincideBusquedaTodas(t) ? "fila-busqueda" : ""} ${
+                    coincideCantidad(t.cantidad) ? "fila-cantidad" : ""
+                  }`}
+                >
+                  <td className="sticky-1">{i + 1}</td>
+                  <td className="perm-grupo-cron">
+                    <strong>{t.combinacion}</strong>
                   </td>
+                  <td className="perm-cantidad">{t.cantidad}</td>
+                  <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
                 </tr>
               ))}
             </tbody>

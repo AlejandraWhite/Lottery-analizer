@@ -84,7 +84,7 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
   const [ultimasFechas, setUltimasFechas] = useState({});
   const [totalHistorico, setTotalHistorico] = useState(0);
   const [filtroCantidad, setFiltroCantidad] = useState("");
-  const [diasReciente, setDiasReciente] = useState(30);
+  const [diasReciente, setDiasReciente] = useState(365);
   const [error, setError] = useState("");
 
   // Parámetros del simulacro (Paga encime)

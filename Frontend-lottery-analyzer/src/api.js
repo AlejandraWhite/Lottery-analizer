@@ -261,3 +261,13 @@ export async function obtenerConteosPermutantes3() {
   if (!res.ok) throw new Error("No se pudieron cargar los conteos de 3 cifras");
   return res.json();
 }
+
+export async function obtenerBacktest3(parametros) {
+  const consulta = new URLSearchParams(parametros).toString();
+  const respuesta = await fetch(`${API_URL}/historico-4-cifras/backtest-3?${consulta}`);
+  if (!respuesta.ok) {
+    const e = await respuesta.json().catch(() => ({}));
+    throw new Error(e.detail || "No se pudo correr la prueba");
+  }
+  return respuesta.json();
+}

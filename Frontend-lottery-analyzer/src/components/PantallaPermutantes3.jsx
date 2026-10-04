@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { obtenerConteosPermutantes3 } from "../api";
 import { terminosBusqueda } from "../utils";
+import BacktestSimulacro3 from "./BacktestSimulacro3";
 import "./PantallaPermutantes.css"; // mismos estilos que la de 4 cifras
+
 
 const CIFRAS = 3;
 // El 0 vale como el mayor (10) para el orden
 const valor = (d) => (d === 0 ? 10 : d);
 const MAX_PERMUTACIONES = 6; // 3! = máximo de permutaciones distintas
-const CLAVE_SIMULACROS = "simulacros_3cifras";
 
 // Todos los grupos de 3 dígitos sin importar el orden: 220 en total
 function generarGrupos() {
@@ -24,22 +25,6 @@ function formatoFecha(iso) {
   if (!iso) return "";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
-}
-
-const dinero = (n) =>
-  Number(n || 0).toLocaleString("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  });
-
-function cargarSimulacros() {
-  try {
-    const raw = localStorage.getItem(CLAVE_SIMULACROS);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
 }
 
 function permutacionesUnicas(digitos) {
@@ -85,22 +70,29 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
   const [totalHistorico, setTotalHistorico] = useState(0);
   const [filtroCantidad, setFiltroCantidad] = useState("");
   const [diasReciente, setDiasReciente] = useState(365);
+  const [metas, setMetas] = useState({ diferentes: 108, repetidos: 40, pacha: 2 });
   const [error, setError] = useState("");
+  const [actualizando, setActualizando] = useState(false);
 
-  // Parámetros del simulacro (Paga encime)
-  const [apuesta, setApuesta] = useState(3000);
-  const [multiplicador, setMultiplicador] = useState(400);
-  const [encime, setEncime] = useState(80);
-  const [simulacros, setSimulacros] = useState(cargarSimulacros);
+  // Carga (o recarga) los resultados desde el servidor
+  const cargarDatos = async () => {
+    setActualizando(true);
+    try {
+      const data = await obtenerConteosPermutantes3();
+      setConteos(data.conteos);
+      setUltimasFechas(data.ultimas_fechas || {});
+      setTotalHistorico(data.total);
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setActualizando(false);
+    }
+  };
 
   useEffect(() => {
-    obtenerConteosPermutantes3()
-      .then((data) => {
-        setConteos(data.conteos);
-        setUltimasFechas(data.ultimas_fechas || {});
-        setTotalHistorico(data.total);
-      })
-      .catch((e) => setError(e.message));
+    cargarDatos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grupos = useMemo(
@@ -256,11 +248,11 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     return tipos;
   }, [todas]);
 
-  // Selección de 150 números: 108 todos diferentes, 40 con un dígito
-  // repetido 2 veces y 2 pacha. Las más frecuentes primero, excluyendo
-  // las que cayeron en los últimos `diasReciente` días (las pacha no
-  // llevan ese filtro).
-  const seleccion150 = useMemo(() => {
+  // Selección de números: por defecto 108 todos diferentes, 40 con un dígito
+  // repetido 2 veces y 2 pacha (editable). Las más frecuentes primero,
+  // excluyendo las que cayeron en los últimos `diasReciente` días
+  // (las pacha no llevan ese filtro).
+  const seleccion = useMemo(() => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const limite = new Date(hoy);
@@ -284,26 +276,37 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
       diferentes: todas
         .filter((t) => distintos(t) === 3 && !cayoReciente(t.ultimaFecha))
         .sort(ordenar)
-        .slice(0, 108),
+        .slice(0, Number(metas.diferentes) || 0),
       repetidos: todas
         .filter((t) => distintos(t) === 2 && !cayoReciente(t.ultimaFecha))
         .sort(ordenar)
-        .slice(0, 40),
+        .slice(0, Number(metas.repetidos) || 0),
       pacha: todas
         .filter((t) => distintos(t) === 1)
         .sort(ordenar)
-        .slice(0, 2),
+        .slice(0, Number(metas.pacha) || 0),
     };
-  }, [todas, diasReciente]);
+  }, [todas, diasReciente, metas]);
+
+  const totalMetas =
+    (Number(metas.diferentes) || 0) +
+    (Number(metas.repetidos) || 0) +
+    (Number(metas.pacha) || 0);
+
+  // Reparte un total en la misma proporción de 108 / 40 / 2
+  const repartirTotal = (valorTotal) => {
+    const n = Math.max(0, Math.min(1000, Math.floor(Number(valorTotal) || 0)));
+    const pacha = Math.round((n * 2) / 150);
+    const repetidos = Math.round((n * 40) / 150);
+    setMetas({ diferentes: n - pacha - repetidos, repetidos, pacha });
+  };
 
   const numerosSeleccion = useMemo(
     () =>
-      [
-        ...seleccion150.diferentes,
-        ...seleccion150.repetidos,
-        ...seleccion150.pacha,
-      ].map((t) => t.combinacion),
-    [seleccion150]
+      [...seleccion.diferentes, ...seleccion.repetidos, ...seleccion.pacha].map(
+        (t) => t.combinacion
+      ),
+    [seleccion]
   );
 
   const totalSeleccion = numerosSeleccion.length;
@@ -311,116 +314,10 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
   // Cuántos de la selección coinciden con el buscador global
   const coincidenEnSeleccion =
     terminos.length > 0 || terminosFecha.length > 0
-      ? [
-          ...seleccion150.diferentes,
-          ...seleccion150.repetidos,
-          ...seleccion150.pacha,
-        ].filter(coincideBusquedaTodas).length
+      ? [...seleccion.diferentes, ...seleccion.repetidos, ...seleccion.pacha].filter(
+          coincideBusquedaTodas
+        ).length
       : 0;
-
-  // ================= SIMULACRO =================
-
-  // Fecha más reciente que hay en los resultados cargados
-  const fechaBase = useMemo(
-    () =>
-      Object.values(ultimasFechas).reduce((max, f) => (f > max ? f : max), ""),
-    [ultimasFechas]
-  );
-
-  const premioPorAcierto =
-    (Number(apuesta) || 0) * (Number(multiplicador) || 0) * (1 + (Number(encime) || 0) / 100);
-  const costoPorDia = (Number(apuesta) || 0) * totalSeleccion;
-
-  // Guarda en el navegador cada vez que cambia el historial
-  useEffect(() => {
-    try {
-      localStorage.setItem(CLAVE_SIMULACROS, JSON.stringify(simulacros));
-    } catch {
-      /* si el navegador no deja guardar, el simulacro sigue en memoria */
-    }
-  }, [simulacros]);
-
-  // 1) Evalúa los simulacros pendientes cuando ya hay una fecha más nueva
-  // 2) Registra el simulacro de hoy si todavía no existe
-  useEffect(() => {
-    if (!fechaBase || totalSeleccion === 0) return;
-
-    setSimulacros((prev) => {
-      let cambio = false;
-      const lista = prev.map((s) => {
-        if (s.resultado || fechaBase <= s.base) return s;
-        const ganadores = s.numeros.filter((n) => (ultimasFechas[n] || "") > s.base);
-        const premioUno = s.apuesta * s.multiplicador * (1 + s.encime / 100);
-        cambio = true;
-        return {
-          ...s,
-          resultado: {
-            fecha: fechaBase,
-            ganadores,
-            premio: ganadores.length * premioUno,
-          },
-        };
-      });
-
-      if (!lista.some((s) => s.base === fechaBase)) {
-        lista.push({
-          base: fechaBase,
-          creado: new Date().toISOString(),
-          numeros: numerosSeleccion,
-          apuesta: Number(apuesta) || 0,
-          multiplicador: Number(multiplicador) || 0,
-          encime: Number(encime) || 0,
-          resultado: null,
-        });
-        cambio = true;
-      }
-
-      return cambio ? lista : prev;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechaBase, ultimasFechas, numerosSeleccion]);
-
-  const pendiente = simulacros.find((s) => s.base === fechaBase && !s.resultado);
-
-  // Vuelve a registrar el simulacro de hoy con la selección y valores actuales
-  const rehacerHoy = () => {
-    setSimulacros((prev) =>
-      prev.map((s) =>
-        s.base === fechaBase && !s.resultado
-          ? {
-              ...s,
-              creado: new Date().toISOString(),
-              numeros: numerosSeleccion,
-              apuesta: Number(apuesta) || 0,
-              multiplicador: Number(multiplicador) || 0,
-              encime: Number(encime) || 0,
-            }
-          : s
-      )
-    );
-  };
-
-  const evaluados = useMemo(
-    () =>
-      simulacros
-        .filter((s) => s.resultado)
-        .sort((a, b) => a.base.localeCompare(b.base)),
-    [simulacros]
-  );
-
-  const ultimoEvaluado = evaluados[evaluados.length - 1] || null;
-
-  const acumulado = useMemo(() => {
-    const jugado = evaluados.reduce((s, x) => s + x.apuesta * x.numeros.length, 0);
-    const ganado = evaluados.reduce((s, x) => s + x.resultado.premio, 0);
-    return {
-      dias: evaluados.length,
-      diasGanados: evaluados.filter((x) => x.resultado.ganadores.length > 0).length,
-      jugado,
-      ganado,
-      neto: ganado - jugado,
-    };
-  }, [evaluados]);
 
   const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
 
@@ -462,43 +359,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
 
   return (
     <div className="permutantes">
-      {/* ============ AVISO DEL ÚLTIMO SIMULACRO ============ */}
-      {ultimoEvaluado &&
-        (ultimoEvaluado.resultado.ganadores.length > 0 ? (
-          <div className="sim-banner sim-gano">
-            <div className="sim-banner-titulo">🎉 ¡FELICIDADES, GANASTE! 🎉</div>
-            <div className="sim-banner-monto">{dinero(ultimoEvaluado.resultado.premio)}</div>
-            <div className="sim-banner-detalle">
-              Acertaste {ultimoEvaluado.resultado.ganadores.length}{" "}
-              {ultimoEvaluado.resultado.ganadores.length === 1 ? "número" : "números"}:{" "}
-              <strong>{ultimoEvaluado.resultado.ganadores.join(" · ")}</strong>
-            </div>
-            <div className="sim-banner-detalle">
-              Jugaste {dinero(ultimoEvaluado.apuesta * ultimoEvaluado.numeros.length)} → neto{" "}
-              {dinero(
-                ultimoEvaluado.resultado.premio -
-                  ultimoEvaluado.apuesta * ultimoEvaluado.numeros.length
-              )}
-            </div>
-            <div className="sim-banner-fecha">
-              Simulacro del {formatoFecha(ultimoEvaluado.base)} · resultado del{" "}
-              {formatoFecha(ultimoEvaluado.resultado.fecha)}
-            </div>
-          </div>
-        ) : (
-          <div className="sim-banner sim-perdio">
-            <div className="sim-banner-titulo">💪 Sigue intentando</div>
-            <div className="sim-banner-detalle">
-              Ninguno de tus {ultimoEvaluado.numeros.length} números cayó esta vez. Habrías
-              perdido {dinero(ultimoEvaluado.apuesta * ultimoEvaluado.numeros.length)}.
-            </div>
-            <div className="sim-banner-fecha">
-              Simulacro del {formatoFecha(ultimoEvaluado.base)} · resultado del{" "}
-              {formatoFecha(ultimoEvaluado.resultado.fecha)}
-            </div>
-          </div>
-        ))}
-
       <h3>
         Permutantes de 3 cifras ({grupos.length})
         {(terminos.length > 0 || terminosFecha.length > 0) && ` · ${totalBusqueda} coinciden`}
@@ -707,7 +567,10 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
           </table>
         </div>
 
-        {/* Selección de 150 números */}
+        {/* Prueba hacia atrás */}
+        <BacktestSimulacro3 />
+
+        {/* Selección de números */}
         <div className="perm-seleccion">
           <h3>
             Selección de {totalSeleccion} números
@@ -725,132 +588,76 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 onChange={(e) => setDiasReciente(e.target.value)}
               />
             </label>
-          </div>
-
-          <div className="perm-seleccion-grid">
-            {renderListaSeleccion("Tres cifras diferentes", seleccion150.diferentes, 108)}
-            {renderListaSeleccion("Un dígito repetido 2 veces", seleccion150.repetidos, 40)}
-            {renderListaSeleccion("Pacha (tres iguales)", seleccion150.pacha, 2)}
-          </div>
-
-          <p className="perm-seleccion-copiar">{numerosSeleccion.join(" ")}</p>
-        </div>
-
-        {/* ============ SIMULACRO DE JUEGO ============ */}
-        <div className="perm-simulacro">
-          <h3>Simulacro de juego · Paga encime</h3>
-
-          <div className="perm-filtros">
             <label>
-              Apuesta por número ($):
+              Total de números:
+              <input
+                type="number"
+                min="0"
+                max="1000"
+                inputMode="numeric"
+                value={totalMetas}
+                onChange={(e) => repartirTotal(e.target.value)}
+              />
+            </label>
+            <label>
+              Diferentes:
               <input
                 type="number"
                 min="0"
                 inputMode="numeric"
-                value={apuesta}
-                onChange={(e) => setApuesta(e.target.value)}
+                value={metas.diferentes}
+                onChange={(e) => setMetas((m) => ({ ...m, diferentes: e.target.value }))}
               />
             </label>
             <label>
-              Paga por cada peso:
+              Un dígito repetido:
               <input
                 type="number"
                 min="0"
                 inputMode="numeric"
-                value={multiplicador}
-                onChange={(e) => setMultiplicador(e.target.value)}
+                value={metas.repetidos}
+                onChange={(e) => setMetas((m) => ({ ...m, repetidos: e.target.value }))}
               />
             </label>
             <label>
-              Encime (%):
+              Pacha:
               <input
                 type="number"
                 min="0"
                 inputMode="numeric"
-                value={encime}
-                onChange={(e) => setEncime(e.target.value)}
+                value={metas.pacha}
+                onChange={(e) => setMetas((m) => ({ ...m, pacha: e.target.value }))}
               />
             </label>
-            <button type="button" className="perm-limpiar" onClick={rehacerHoy} disabled={!pendiente}>
-              Rehacer simulacro de hoy
+            <button
+              type="button"
+              className="perm-limpiar"
+              onClick={cargarDatos}
+              disabled={actualizando}
+            >
+              {actualizando ? "⏳ Actualizando..." : "🔄 Actualizar resultados"}
             </button>
           </div>
 
-          <p className="sim-linea">
-            Premio por acierto: <strong>{dinero(premioPorAcierto)}</strong> · Costo por día (
-            {totalSeleccion} números): <strong>{dinero(costoPorDia)}</strong>
-          </p>
-
-          {pendiente ? (
-            <p className="sim-pendiente">
-              ⏳ Simulacro registrado con datos hasta el {formatoFecha(pendiente.base)} (
-              {pendiente.numeros.length} números). Cuando sincronices los resultados nuevos y
-              vuelvas a abrir esta pantalla, se compara automáticamente.
-            </p>
-          ) : (
-            <p className="sim-pendiente">Esperando resultados para registrar el simulacro.</p>
-          )}
-
-          <div className="sim-tarjetas">
-            <div className="sim-tarjeta">
-              <span>Días evaluados</span>
-              <strong>{acumulado.dias}</strong>
-            </div>
-            <div className="sim-tarjeta">
-              <span>Días con premio</span>
-              <strong>{acumulado.diasGanados}</strong>
-            </div>
-            <div className="sim-tarjeta">
-              <span>Total jugado</span>
-              <strong>{dinero(acumulado.jugado)}</strong>
-            </div>
-            <div className="sim-tarjeta">
-              <span>Total ganado</span>
-              <strong>{dinero(acumulado.ganado)}</strong>
-            </div>
-            <div className={`sim-tarjeta ${acumulado.neto >= 0 ? "sim-positivo" : "sim-negativo"}`}>
-              <span>Neto acumulado</span>
-              <strong>{dinero(acumulado.neto)}</strong>
-            </div>
+          <div className="perm-seleccion-grid">
+            {renderListaSeleccion(
+              "Tres cifras diferentes",
+              seleccion.diferentes,
+              Number(metas.diferentes) || 0
+            )}
+            {renderListaSeleccion(
+              "Un dígito repetido 2 veces",
+              seleccion.repetidos,
+              Number(metas.repetidos) || 0
+            )}
+            {renderListaSeleccion(
+              "Pacha (tres iguales)",
+              seleccion.pacha,
+              Number(metas.pacha) || 0
+            )}
           </div>
 
-          {evaluados.length > 0 && (
-            <div className="perm-scroll sim-historial">
-              <table className="tabla-permutantes">
-                <thead>
-                  <tr>
-                    <th>Jugada (datos al)</th>
-                    <th>Resultado del</th>
-                    <th>Estado</th>
-                    <th>Acertados</th>
-                    <th>Jugado</th>
-                    <th>Ganado</th>
-                    <th>Neto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...evaluados].reverse().map((s) => {
-                    const jugado = s.apuesta * s.numeros.length;
-                    const neto = s.resultado.premio - jugado;
-                    const gano = s.resultado.ganadores.length > 0;
-                    return (
-                      <tr key={s.base}>
-                        <td>{formatoFecha(s.base)}</td>
-                        <td>{formatoFecha(s.resultado.fecha)}</td>
-                        <td>{gano ? "🎉 Ganó" : "Sigue intentando"}</td>
-                        <td>{s.resultado.ganadores.join(" · ") || "—"}</td>
-                        <td className="perm-cantidad">{dinero(jugado)}</td>
-                        <td className="perm-cantidad">{dinero(s.resultado.premio)}</td>
-                        <td className={`perm-cantidad ${neto >= 0 ? "sim-positivo" : "sim-negativo"}`}>
-                          {dinero(neto)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <p className="perm-seleccion-copiar">{numerosSeleccion.join(" ")}</p>
         </div>
       </div>
     </div>

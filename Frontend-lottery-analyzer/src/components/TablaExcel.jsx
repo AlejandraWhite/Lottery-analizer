@@ -1,17 +1,17 @@
 import { useState } from "react";
-import { formatearFecha, esReciente } from "../utils";
+import { formatearFecha, esReciente, coincideTexto } from "../utils";
 import Resaltado from "./Resaltado";
 
-function coincideTexto(valor, patron, modo = "cualquiera") {
-  if (!patron) return false;
-  const str = String(valor ?? "").toLowerCase();
-  const pat = patron.toLowerCase();
+// function coincideTexto(valor, patron, modo = "cualquiera") {
+//   if (!patron) return false;
+//   const str = String(valor ?? "").toLowerCase();
+//   const pat = patron.toLowerCase();
 
-  if (modo === "ultimas2") {
-    return str.endsWith(pat);
-  }
-  return str.includes(pat);
-}
+//   if (modo === "ultimas2") {
+//     return str.endsWith(pat);
+//   }
+//   return str.includes(pat);
+// }
 
 function IconoBasura({ onClick, disabled }) {
   return (

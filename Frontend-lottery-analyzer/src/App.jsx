@@ -112,10 +112,13 @@ export default function App() {
     }
   }
 
-  function manejarBusqueda(valor) {
-    setBusqueda(valor.replace(/\D/g, "").slice(0, 4));
-  }
-
+ function manejarBusqueda(valor) {
+  // solo dígitos, espacios y comas; cada número máx. 4 cifras
+  const limpio = valor
+    .replace(/[^\d\s,]/g, "")
+    .replace(/\d{5,}/g, (n) => n.slice(0, 4));
+  setBusqueda(limpio);
+}
   return (
      <ErrorBoundary>
     <div className="contenedor">
@@ -127,7 +130,7 @@ export default function App() {
   <input
     type="text"
     className="input-busqueda"
-    placeholder="Buscar número (1 a 4 cifras), ej: 7, 07, 072, 0725"
+    placeholder="Buscar números (1 a 4 cifras), ej: 07 15 0725"
     value={busqueda}
     onChange={(e) => manejarBusqueda(e.target.value)}
   />

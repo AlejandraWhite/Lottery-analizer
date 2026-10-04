@@ -1,26 +1,47 @@
+import { terminosBusqueda } from "../utils";
+
 export default function Resaltado({ texto, busqueda, modo = "cualquiera" }) {
   const str = String(texto ?? "");
-  if (!busqueda) return str;
+  const terminos = terminosBusqueda(busqueda);
+  if (terminos.length === 0) return str;
 
-  let idx;
+  const bajo = str.toLowerCase();
+  const rangos = [];
 
-  if (modo === "ultimas2") {
-    // Solo coincide si el patrón está pegado al final del número
-    const inicio = str.length - busqueda.length;
-    const coincideAlFinal =
-      inicio >= 0 && str.slice(inicio).toLowerCase() === busqueda.toLowerCase();
-    idx = coincideAlFinal ? inicio : -1;
-  } else {
-    idx = str.toLowerCase().indexOf(busqueda.toLowerCase());
+  for (const t of terminos) {
+    const pat = t.toLowerCase();
+    if (modo === "ultimas2") {
+      if (bajo.endsWith(pat)) rangos.push([str.length - pat.length, str.length]);
+    } else {
+      let i = bajo.indexOf(pat);
+      while (i !== -1) {
+        rangos.push([i, i + pat.length]);
+        i = bajo.indexOf(pat, i + pat.length);
+      }
+    }
   }
 
-  if (idx === -1) return str;
+  if (rangos.length === 0) return str;
 
-  return (
-    <>
-      {str.slice(0, idx)}
-      <mark className="resaltado">{str.slice(idx, idx + busqueda.length)}</mark>
-      {str.slice(idx + busqueda.length)}
-    </>
-  );
+  // ordenar y fusionar rangos solapados
+  rangos.sort((a, b) => a[0] - b[0]);
+  const fusionados = [[...rangos[0]]];
+  for (const [ini, fin] of rangos.slice(1)) {
+    const ult = fusionados[fusionados.length - 1];
+    if (ini <= ult[1]) ult[1] = Math.max(ult[1], fin);
+    else fusionados.push([ini, fin]);
+  }
+
+  const partes = [];
+  let cursor = 0;
+  fusionados.forEach(([ini, fin], k) => {
+    if (ini > cursor) partes.push(str.slice(cursor, ini));
+    partes.push(
+      <mark key={k} className="resaltado">{str.slice(ini, fin)}</mark>
+    );
+    cursor = fin;
+  });
+  if (cursor < str.length) partes.push(str.slice(cursor));
+
+  return <>{partes}</>;
 }

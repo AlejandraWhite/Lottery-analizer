@@ -32,3 +32,21 @@ export function esReciente(fechaIso, dias = 7) {
   limite.setDate(limite.getDate() - dias);
   return fecha >= limite;
 }
+
+// --- Búsqueda con varios términos ---
+
+// "07 15, 0725" -> ["07", "15", "0725"]
+export function terminosBusqueda(busqueda) {
+  return [...new Set(String(busqueda ?? "").split(/[\s,;]+/).filter(Boolean))];
+}
+
+function coincideUno(valor, patron, modo) {
+  const str = String(valor ?? "").toLowerCase();
+  const pat = patron.toLowerCase();
+  return modo === "ultimas2" ? str.endsWith(pat) : str.includes(pat);
+}
+
+// true si el valor coincide con CUALQUIERA de los términos
+export function coincideTexto(valor, busqueda, modo = "cualquiera") {
+  return terminosBusqueda(busqueda).some((t) => coincideUno(valor, t, modo));
+}

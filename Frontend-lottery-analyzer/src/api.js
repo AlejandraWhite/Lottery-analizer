@@ -262,14 +262,17 @@ export async function obtenerConteosPermutantes3() {
   return res.json();
 }
 
-export async function obtenerBacktest3(parametros) {
-  const consulta = new URLSearchParams(parametros).toString();
-  const respuesta = await fetch(`${API_URL}/historico-4-cifras/backtest-3?${consulta}`);
-  if (!respuesta.ok) {
-    const e = await respuesta.json().catch(() => ({}));
+export async function obtenerBacktest3(cuerpo) {
+  const res = await fetch(`${API_URL}/historico-4-cifras/backtest-3`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cuerpo),
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
     throw new Error(e.detail || "No se pudo correr la prueba");
   }
-  return respuesta.json();
+  return res.json();
 }
 
 export async function obtenerFechasCombinaciones3() {

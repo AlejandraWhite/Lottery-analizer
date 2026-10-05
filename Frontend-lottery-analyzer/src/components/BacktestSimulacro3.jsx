@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { obtenerBacktest3 } from "../api";
 
+const NOMBRES = {
+  frecuentes: "los que más caen",
+  ratio: "más atrasados (× su promedio)",
+  atraso: "más atrasados (días de atraso)",
+  sinCaer: "los que llevan más tiempo sin caer",
+  mezcla: "mezcla de los que más caen y los más atrasados",
+};
+
 const dinero = (n) =>
   Number(n || 0).toLocaleString("es-CO", {
     style: "currency",
@@ -14,10 +22,8 @@ const formatoFecha = (iso) => {
   return `${d}/${m}/${y}`;
 };
 
-export default function BacktestSimulacro3() {
+export default function BacktestSimulacro3({ config }) {
   const [dias, setDias] = useState(90);
-  const [total, setTotal] = useState(150);
-  const [diasReciente, setDiasReciente] = useState(365);
   const [apuesta, setApuesta] = useState(3000);
   const [multiplicador, setMultiplicador] = useState(400);
   const [encime, setEncime] = useState(80);
@@ -25,7 +31,11 @@ export default function BacktestSimulacro3() {
 
   const [cargando, setCargando] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [probada, setProbada] = useState("");
   const [error, setError] = useState("");
+
+  const claveActual = JSON.stringify(config);
+  const desactualizado = resultado && probada !== claveActual;
 
   const correr = async () => {
     setCargando(true);
@@ -33,14 +43,20 @@ export default function BacktestSimulacro3() {
     try {
       const data = await obtenerBacktest3({
         dias: Number(dias) || 90,
-        total: Number(total) || 150,
-        dias_reciente: Number(diasReciente) || 0,
+        criterio: config.criterio,
+        min_veces: config.minVeces,
+        dias_reciente: config.diasReciente,
+        repartir: config.repartir,
+        metas: config.metas,
+        total: Math.max(1, config.total),
+        pct_frecuencia: config.pctFrecuencia,
         apuesta: Number(apuesta) || 0,
         multiplicador: Number(multiplicador) || 0,
         encime: Number(encime) || 0,
         iva: Number(iva) || 0,
       });
       setResultado(data);
+      setProbada(claveActual);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -54,22 +70,16 @@ export default function BacktestSimulacro3() {
     <div className="perm-simulacro">
       <h3>Prueba hacia atrás · ¿habría funcionado esta selección?</h3>
       <p className="sim-linea">
-        Para cada día, arma la selección solo con lo que se sabía hasta el día anterior y la
-        compara con lo que cayó ese día.
+        Cada día arma <strong>{config.total} números</strong> con el criterio{" "}
+        <strong>{NOMBRES[config.criterio]}</strong>, usando solo los resultados hasta el día
+        anterior, y los compara con lo que cayó ese día. Para cambiar el criterio o la cantidad,
+        ajústalos arriba.
       </p>
 
       <div className="perm-filtros">
         <label>
           Días a probar:
           <input type="number" min="1" max="730" value={dias} onChange={(e) => setDias(e.target.value)} />
-        </label>
-        <label>
-          Total de números:
-          <input type="number" min="1" max="1000" value={total} onChange={(e) => setTotal(e.target.value)} />
-        </label>
-        <label>
-          No han caído en (días):
-          <input type="number" min="0" value={diasReciente} onChange={(e) => setDiasReciente(e.target.value)} />
         </label>
         <label>
           Apuesta por número ($):
@@ -87,13 +97,23 @@ export default function BacktestSimulacro3() {
           IVA (%):
           <input type="number" min="0" value={iva} onChange={(e) => setIva(e.target.value)} />
         </label>
-        <button type="button" className="perm-limpiar" onClick={correr} disabled={cargando}>
+        <button
+          type="button"
+          className="perm-limpiar"
+          onClick={correr}
+          disabled={cargando || config.total < 1}
+        >
           {cargando ? "⏳ Calculando..." : "▶ Correr prueba"}
         </button>
       </div>
 
       {cargando && <p className="sim-rehaciendo">⏳ Calculando la prueba...</p>}
       {error && <p className="formulario-error">{error}</p>}
+      {desactualizado && (
+        <p className="formulario-error">
+          Cambiaste el criterio o la cantidad de números. Vuelve a correr la prueba.
+        </p>
+      )}
 
       {r && (
         <>

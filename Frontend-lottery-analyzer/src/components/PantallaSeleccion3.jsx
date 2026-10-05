@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   obtenerFechasCombinaciones3,
   guardarJugada3,
@@ -39,12 +39,12 @@ const ORDENADORES = {
   atraso: (a, b) => b.atraso - a.atraso || porNumero(a, b),
   sinCaer: (a, b) => b.diasSinCaer - a.diasSinCaer || porNumero(a, b),
 };
-
 const CRITERIOS = [
   { id: "frecuentes", texto: "Los que más caen (más veces en el histórico)" },
   { id: "ratio", texto: "Más atrasados según su promedio (× su promedio)" },
   { id: "atraso", texto: "Más atrasados según su promedio (días de atraso)" },
   { id: "sinCaer", texto: "Los que llevan más tiempo sin caer" },
+  { id: "mezcla", texto: "Mezcla: los que más caen + los más atrasados" },
 ];
 
 export default function PantallaSeleccion3({
@@ -65,6 +65,15 @@ export default function PantallaSeleccion3({
   const [metas, setMetas] = useState({ diferentes: 108, repetidos: 40, pacha: 2 });
   const [texto, setTexto] = useState("");
   const [iniciado, setIniciado] = useState(false);
+  const [pctFrecuencia, setPctFrecuencia] = useState(50);
+  const areaRef = useRef(null);
+
+useLayoutEffect(() => {
+  const el = areaRef.current;
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}, [texto]);
 
   // Prueba hacia adelante
   const [jugadas, setJugadas] = useState([]);
@@ -127,37 +136,56 @@ export default function PantallaSeleccion3({
   };
 
   // Genera la selección según el criterio y la deja en el cuadro de texto
-  const generar = () => {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const limite = new Date(hoy);
-    limite.setDate(limite.getDate() - (Number(diasReciente) || 0));
-    const cayoReciente = (iso) => {
-      if (!iso) return false;
-      const [y, m, d] = iso.split("-").map(Number);
-      return new Date(y, m - 1, d) >= limite;
-    };
-
-    const elegible = (t) => {
-      if (criterio === "frecuentes") return !(t.distintos !== 1 && cayoReciente(t.ultimaFecha));
-      if (criterio === "sinCaer") return t.diasSinCaer != null && t.cantidad >= 1;
-      // ratio / atraso necesitan promedio confiable
-      return t.promedio != null && t.cantidad >= Number(minVeces) && t[criterio === "ratio" ? "veces" : "atraso"] != null;
-    };
-
-    const orden = ORDENADORES[criterio];
-    const candidatos = stats.filter(elegible);
-
-    let elegidos;
-    if (repartir) {
-      const top = (n, cuantos) =>
-        candidatos.filter((t) => t.distintos === n).sort(orden).slice(0, Number(cuantos) || 0);
-      elegidos = [...top(3, metas.diferentes), ...top(2, metas.repetidos), ...top(1, metas.pacha)];
-    } else {
-      elegidos = [...candidatos].sort(orden).slice(0, totalMetas);
-    }
-    setTexto(elegidos.map((t) => t.combinacion).join(" "));
+const generar = () => {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const limite = new Date(hoy);
+  limite.setDate(limite.getDate() - (Number(diasReciente) || 0));
+  const cayoReciente = (iso) => {
+    if (!iso) return false;
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d) >= limite;
   };
+
+  const elegiblePara = (crit) => (t) => {
+    if (crit === "frecuentes") return !(t.distintos !== 1 && cayoReciente(t.ultimaFecha));
+    if (crit === "sinCaer") return t.diasSinCaer != null && t.cantidad >= 1;
+    return (
+      t.promedio != null &&
+      t.cantidad >= Number(minVeces) &&
+      t[crit === "ratio" ? "veces" : "atraso"] != null
+    );
+  };
+
+  const seleccionar = (tipo, cuantos) => {
+    const delTipo = tipo ? stats.filter((t) => t.distintos === tipo) : stats;
+    const n = Number(cuantos) || 0;
+    if (criterio === "mezcla") {
+      const nf = Math.round((n * Number(pctFrecuencia)) / 100);
+      const a = delTipo
+        .filter(elegiblePara("frecuentes"))
+        .sort(ORDENADORES.frecuentes)
+        .slice(0, nf);
+      const usados = new Set(a.map((t) => t.combinacion));
+      const b = delTipo
+        .filter((t) => !usados.has(t.combinacion) && elegiblePara("ratio")(t))
+        .sort(ORDENADORES.ratio)
+        .slice(0, n - a.length);
+      return [...a, ...b];
+    }
+    return delTipo.filter(elegiblePara(criterio)).sort(ORDENADORES[criterio]).slice(0, n);
+  };
+
+  const elegidos = repartir
+    ? [
+        ...seleccionar(3, metas.diferentes),
+        ...seleccionar(2, metas.repetidos),
+        ...seleccionar(1, metas.pacha),
+      ]
+    : seleccionar(null, totalMetas);
+
+  setTexto(elegidos.map((t) => t.combinacion).join(" "));
+};
 
   // Primera selección automática cuando llegan los datos
   useEffect(() => {
@@ -354,6 +382,30 @@ export default function PantallaSeleccion3({
             </label>
           )}
 
+          {criterio === "mezcla" && (
+  <>
+    <label>
+      % por los que más caen:
+      <input
+        type="number"
+        min="0"
+        max="100"
+        inputMode="numeric"
+        value={pctFrecuencia}
+        onChange={(e) => setPctFrecuencia(e.target.value)}
+      />
+    </label>
+    <label>
+      No han caído en los últimos (días):
+      <input type="number" min="0" inputMode="numeric" value={diasReciente} onChange={(e) => setDiasReciente(e.target.value)} />
+    </label>
+    <label>
+      Mínimo de veces caído:
+      <input type="number" min="2" inputMode="numeric" value={minVeces} onChange={(e) => setMinVeces(e.target.value)} />
+    </label>
+  </>
+)}
+
           <label>
             Total de números:
             <input
@@ -424,11 +476,18 @@ export default function PantallaSeleccion3({
           Números a jugar (puedes agregar o quitar a mano, separados por espacio o coma):
         </p>
         <textarea
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          rows={4}
-          style={{ width: "100%", boxSizing: "border-box", fontFamily: "monospace" }}
-        />
+  ref={areaRef}
+  value={texto}
+  onChange={(e) => setTexto(e.target.value)}
+  rows={4}
+  style={{
+    width: "100%",
+    boxSizing: "border-box",
+    fontFamily: "monospace",
+    overflow: "hidden",
+    resize: "none",
+  }}
+/>
         {ignorados > 0 && (
           <p className="formulario-error">
             {ignorados} elemento(s) ignorado(s): solo se aceptan números de 3 cifras.
@@ -552,17 +611,13 @@ export default function PantallaSeleccion3({
                       <td>{pesos(j.apuesta)}</td>
                       <td>{formatoFecha(j.fecha_corte)}</td>
                       <td>
-                        <button
-                          type="button"
-                          className="perm-limpiar"
-                          onClick={() => setTexto(j.numeros.join(" "))}
-                        >
-                          Cargar
-                        </button>{" "}
-                        <button type="button" className="perm-limpiar" onClick={() => quitar(j.id)}>
-                          ✕ Eliminar
-                        </button>
-                      </td>
+  <button type="button" className="perm-limpiar" onClick={() => setTexto(j.numeros.join(" "))}>
+    Cargar
+  </button>{" "}
+  <button type="button" className="perm-limpiar" onClick={() => quitar(j.id)}>
+    ✕ Eliminar
+  </button>
+</td>
                     </tr>
                   ))}
                 </tbody>
@@ -626,7 +681,21 @@ export default function PantallaSeleccion3({
       </div>
 
       {/* ============ PRUEBA HACIA ATRÁS ============ */}
-      <BacktestSimulacro3 />
+      <BacktestSimulacro3
+  config={{
+    criterio,
+    minVeces: Number(minVeces) || 2,
+    diasReciente: Number(diasReciente) || 0,
+    repartir,
+    metas: {
+      diferentes: Number(metas.diferentes) || 0,
+      repetidos: Number(metas.repetidos) || 0,
+      pacha: Number(metas.pacha) || 0,
+    },
+    total: totalMetas,
+    pctFrecuencia: Number(pctFrecuencia) || 0,
+  }}
+/>
     </div>
   );
 }

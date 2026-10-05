@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   obtenerAnalisis,
   obtenerVistaExcel,
+  sincronizarHistorico4,
   importarExcel,
   sincronizarLoteria,
   eliminarResultado,
@@ -35,6 +36,7 @@ export default function App() {
   const [busqueda, setBusqueda] = useState("");
   const [busquedaFecha, setBusquedaFecha] = useState("");
   const [modoBusqueda, setModoBusqueda] = useState("cualquiera"); // "cualquiera" | "ultimas2"
+  const [versionSync, setVersionSync] = useState(0);
 
   async function cargarTodo() {
     setCargando(true);
@@ -83,22 +85,30 @@ export default function App() {
     }
   }
 
-  async function manejarSincronizar() {
-    setSincronizando(true);
-    setMensaje("");
+async function manejarSincronizar() {
+  setSincronizando(true);
+  setMensaje("");
 
+  try {
+    const resultado = await sincronizarLoteria();
+    setMensaje(resultado.mensaje);
+    const vista = await obtenerVistaExcel();
+    setDatos(resultado.analisis);
+    setVistaExcel(vista);
+
+    // Copia lo nuevo al histórico de 4 cifras y avisa a Selección 3
     try {
-      const resultado = await sincronizarLoteria();
-      setMensaje(resultado.mensaje);
-      const vista = await obtenerVistaExcel();
-      setDatos(resultado.analisis);
-      setVistaExcel(vista);
+      await sincronizarHistorico4();
     } catch (e) {
-      setMensaje(e.message);
-    } finally {
-      setSincronizando(false);
+      console.error(e);
     }
+    setVersionSync((v) => v + 1);
+  } catch (e) {
+    setMensaje(e.message);
+  } finally {
+    setSincronizando(false);
   }
+}
 
   async function manejarEliminarResultado(id) {
     setCargando(true);
@@ -247,12 +257,20 @@ export default function App() {
         )}
       </div>
 
-      <GestorResultados
-        onResultado={(data) => {
-          setDatos(data.analisis);
-          setVistaExcel(data.vista_excel);
-        }}
-      />
+     <GestorResultados
+  onResultado={async (data) => {
+    setDatos(data.analisis);
+    setVistaExcel(data.vista_excel);
+
+    // Copia el resultado nuevo al histórico de 4 cifras y avisa a Selección 3
+    try {
+      await sincronizarHistorico4();
+    } catch (e) {
+      console.error(e);
+    }
+    setVersionSync((v) => v + 1);
+  }}
+/>
 
       {mensaje && <p className="mensaje">{mensaje}</p>}
       {cargando && <p className="cargando">Cargando...</p>}
@@ -288,7 +306,12 @@ ventana === "permutantes3" ? (
   />
 ):
 ventana === "seleccion3" ? (
-  <PantallaSeleccion3 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+  <PantallaSeleccion3
+    busqueda={busqueda}
+    busquedaFecha={busquedaFecha}
+    modoBusqueda={modoBusqueda}
+    versionSync={versionSync}
+  />
 ) :
 ventana === "intervalos3" ? (
   <PantallaIntervalos3 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />

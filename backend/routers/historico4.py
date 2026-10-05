@@ -7,7 +7,6 @@ import re
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import extract, func, nullslast, select
 from sqlalchemy.orm import Session, aliased
-from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from models_historico4 import ResultadoHistorico4 as R
@@ -68,6 +67,28 @@ def resumen(db: Session = Depends(get_db)):
 def permutantes_3(db: Session = Depends(get_db)):
     return servicio.conteos_permutantes_3(db)
 
+@router.get("/fechas-3")
+def fechas_por_combinacion_3(db: Session = Depends(get_db)):
+    """Para cada número de 3 cifras (últimos 3 dígitos del de 4), todas las
+    fechas en que cayó, en orden. El frontend calcula los intervalos."""
+    filas = (
+        db.query(R.fecha, R.numero)
+        .filter(R.fecha.isnot(None), R.numero.isnot(None))
+        .order_by(R.fecha)
+        .all()
+    )
+
+    fechas = {}
+    total = 0
+    for fecha, numero in filas:
+        if len(numero) != 4 or not numero.isdigit():
+            continue
+        if hasattr(fecha, "hour"):  # por si la columna es datetime
+            fecha = fecha.date()
+        fechas.setdefault(numero[-3:], []).append(fecha.isoformat())
+        total += 1
+
+    return {"total": total, "fechas": fechas}
 
 @router.get("")
 def listar(

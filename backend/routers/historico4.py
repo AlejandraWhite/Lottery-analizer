@@ -2,17 +2,21 @@
 routers/historico4.py
 """
 
+import json
 import re
 
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import extract, func, nullslast, select
 from sqlalchemy.orm import Session, aliased
-
+from typing import Literal, Optional
 from database import SessionLocal
 from models_historico4 import ResultadoHistorico4 as R
 from services import historico4 as servicio
 from datetime import timedelta
 from fastapi import Query
+from models_jugada3 import Jugada3
 
 router = APIRouter(prefix="/historico-4-cifras", tags=["histórico 4 cifras"])
 
@@ -215,17 +219,87 @@ def _seleccionar(conteos, ultimas, dia, dias_reciente, total):
     )
 
 
-@router.get("/backtest-3")
-def backtest_3(
-    dias: int = Query(90, ge=1, le=730),
-    total: int = Query(150, ge=1, le=1000),
-    dias_reciente: int = Query(365, ge=0, le=3650),
-    apuesta: float = 3000,
-    multiplicador: float = 400,
-    encime: float = 80,
-    iva: float = 19,
-    db: Session = Depends(get_db),
-):
+class MetasIn(BaseModel):
+    diferentes: int = Field(108, ge=0, le=1000)
+    repetidos: int = Field(40, ge=0, le=1000)
+    pacha: int = Field(2, ge=0, le=1000)
+
+
+class Backtest3In(BaseModel):
+    dias: int = Field(90, ge=1, le=730)
+    criterio: Literal["frecuentes", "ratio", "atraso", "sinCaer", "mezcla"] = "frecuentes"
+    min_veces: int = Field(3, ge=1, le=1000)
+    dias_reciente: int = Field(365, ge=0, le=3650)
+    repartir: bool = True
+    metas: MetasIn = MetasIn()
+    total: int = Field(150, ge=1, le=1000)
+    pct_frecuencia: int = Field(50, ge=0, le=100)
+    apuesta: float = 3000
+    multiplicador: float = 400
+    encime: float = 80
+    iva: float = 19
+
+
+TODOS = [f"{i:03d}" for i in range(1000)]
+TIPO = {n: len(set(n)) for n in TODOS}  # 3 = diferentes, 2 = un repetido, 1 = pacha
+
+
+def _estadisticas_dia(dia, cuenta, primera, ultima):
+    """Stats de cada número usando SOLO lo conocido antes de `dia`."""
+    filas = []
+    for n in TODOS:
+        c = cuenta.get(n, 0)
+        ult = ultima.get(n)
+        sin = (dia - ult).days if ult else None
+        prom = (ult - primera[n]).days / (c - 1) if c >= 2 else None
+        filas.append({
+            "n": n,
+            "tipo": TIPO[n],
+            "cantidad": c,
+            "ultima": ult,
+            "sin": sin,
+            "prom": prom,
+            "veces": sin / prom if prom and sin is not None else None,
+            "atraso": sin - prom if prom is not None and sin is not None else None,
+        })
+    return filas
+
+
+def _elegibles(crit, filas, dia, d):
+    limite = dia.toordinal() - d.dias_reciente
+
+    if crit == "frecuentes":
+        lista = [
+            f for f in filas
+            if not (f["tipo"] != 1 and f["ultima"] and f["ultima"].toordinal() >= limite)
+        ]
+        lista.sort(key=lambda f: (-f["cantidad"], f["ultima"].isoformat() if f["ultima"] else "", f["n"]))
+    elif crit == "sinCaer":
+        lista = [f for f in filas if f["sin"] is not None and f["cantidad"] >= 1]
+        lista.sort(key=lambda f: (-f["sin"], f["n"]))
+    else:  # ratio / atraso
+        campo = "veces" if crit == "ratio" else "atraso"
+        lista = [
+            f for f in filas
+            if f["prom"] is not None and f["cantidad"] >= d.min_veces and f[campo] is not None
+        ]
+        lista.sort(key=lambda f: (-f[campo], f["n"]))
+    return lista
+
+
+def _seleccionar_dia(filas, dia, d, tipo, cuantos):
+    delTipo = filas if tipo is None else [f for f in filas if f["tipo"] == tipo]
+    if d.criterio == "mezcla":
+        nf = round(cuantos * d.pct_frecuencia / 100)
+        a = _elegibles("frecuentes", delTipo, dia, d)[:nf]
+        usados = {f["n"] for f in a}
+        b = [f for f in _elegibles("ratio", delTipo, dia, d) if f["n"] not in usados]
+        return [f["n"] for f in a + b[: cuantos - len(a)]]
+    return [f["n"] for f in _elegibles(d.criterio, delTipo, dia, d)[:cuantos]]
+
+
+@router.post("/backtest-3")
+def backtest_3(d: Backtest3In, db: Session = Depends(get_db)):
     filas = (
         db.query(R.fecha, R.numero)
         .filter(R.fecha.isnot(None), R.numero.isnot(None))
@@ -233,28 +307,35 @@ def backtest_3(
         .all()
     )
 
-    # fecha -> números de 3 cifras que cayeron ese día (los 3 últimos dígitos del de 4)
     por_dia = {}
     for fecha, numero in filas:
         if len(numero) != 4 or not numero.isdigit():
             continue
-        if hasattr(fecha, "hour"):  # por si la columna es datetime
+        if hasattr(fecha, "hour"):
             fecha = fecha.date()
         por_dia.setdefault(fecha, []).append(numero[-3:])
 
     fechas = sorted(por_dia)
-    a_evaluar = set(fechas[-dias:])
-    premio_uno = _premio_por_acierto(apuesta, multiplicador, encime, iva)
+    a_evaluar = set(fechas[-d.dias:])
+    premio_uno = _premio_por_acierto(d.apuesta, d.multiplicador, d.encime, d.iva)
 
-    conteos, ultimas = {}, {}
+    cuenta, primera, ultima = {}, {}, {}
     detalle = []
 
     for dia in fechas:
         cayeron = set(por_dia[dia])
 
         if dia in a_evaluar:
-            # selección con los datos de ANTES de este día
-            jugados = _seleccionar(conteos, ultimas, dia, dias_reciente, total)
+            stats = _estadisticas_dia(dia, cuenta, primera, ultima)  # solo datos previos
+            if d.repartir:
+                jugados = (
+                    _seleccionar_dia(stats, dia, d, 3, d.metas.diferentes)
+                    + _seleccionar_dia(stats, dia, d, 2, d.metas.repetidos)
+                    + _seleccionar_dia(stats, dia, d, 1, d.metas.pacha)
+                )
+            else:
+                jugados = _seleccionar_dia(stats, dia, d, None, d.total)
+
             ganadores = sorted(n for n in jugados if n in cayeron)
             detalle.append({
                 "fecha": dia.isoformat(),
@@ -263,28 +344,157 @@ def backtest_3(
                 "aciertos": len(ganadores),
                 "ganadores": ganadores,
                 "esperado_azar": round(len(jugados) * len(cayeron) / 1000, 3),
-                "costo": apuesta * len(jugados),
+                "costo": d.apuesta * len(jugados),
                 "premio": premio_uno * len(ganadores),
             })
 
-        # recién ahora se agrega el día a lo "conocido"
-        for n in por_dia[dia]:
-            conteos[n] = conteos.get(n, 0) + 1
-            ultimas[n] = dia
+        # recién ahora el día pasa a ser "conocido"
+        for n in cayeron:
+            cuenta[n] = cuenta.get(n, 0) + 1
+            primera.setdefault(n, dia)
+            ultima[n] = dia
 
-    jugado = sum(d["costo"] for d in detalle)
-    ganado = sum(d["premio"] for d in detalle)
+    jugado = sum(x["costo"] for x in detalle)
+    ganado = sum(x["premio"] for x in detalle)
 
     return {
         "premio_por_acierto": premio_uno,
         "resumen": {
             "dias_evaluados": len(detalle),
-            "dias_con_premio": sum(1 for d in detalle if d["aciertos"] > 0),
-            "aciertos": sum(d["aciertos"] for d in detalle),
-            "aciertos_esperados_azar": round(sum(d["esperado_azar"] for d in detalle), 2),
+            "dias_con_premio": sum(1 for x in detalle if x["aciertos"] > 0),
+            "aciertos": sum(x["aciertos"] for x in detalle),
+            "aciertos_esperados_azar": round(sum(x["esperado_azar"] for x in detalle), 2),
             "jugado": jugado,
             "ganado": ganado,
             "neto": ganado - jugado,
         },
-        "detalle": list(reversed(detalle)),  # el más reciente primero
+        "detalle": list(reversed(detalle)),
     }
+
+class JugadaIn(BaseModel):
+    numeros: list[str] = Field(..., min_length=1, max_length=1000)
+    nombre: Optional[str] = None
+    apuesta: float = 3000
+    multiplicador: float = 400
+    encime: float = 80
+
+
+def _a_fecha(f):
+    return f.date() if hasattr(f, "hour") else f
+
+
+def _evaluar(j: Jugada3, db: Session):
+    """Si ya llegaron resultados posteriores a fecha_corte, evalúa la jugada y la cierra."""
+    if j.estado != "pendiente":
+        return
+
+    q = db.query(R.fecha, R.numero, R.loteria).filter(
+        R.fecha.isnot(None), R.numero.isnot(None)
+    )
+    if j.fecha_corte:
+        q = q.filter(R.fecha > j.fecha_corte)
+
+    jugados = set(json.loads(j.numeros))
+    dias = set()
+    hits = {}  # (numero, fecha) -> [loterias]
+    for fecha, numero, loteria in q.all():
+        if len(numero) != 4 or not numero.isdigit():
+            continue
+        fecha = _a_fecha(fecha)
+        dias.add(fecha)
+        n3 = numero[-3:]
+        if n3 in jugados:
+            hits.setdefault((n3, fecha), [])
+            if loteria and loteria not in hits[(n3, fecha)]:
+                hits[(n3, fecha)].append(loteria)
+
+    if not dias:
+        return  # todavía no llegan resultados nuevos
+
+    premio_uno = _premio_por_acierto(j.apuesta, j.multiplicador, j.encime, 19)
+    aciertos = [
+        {"numero": n, "fecha": f.isoformat(), "loterias": l}
+        for (n, f), l in sorted(hits.items(), key=lambda x: (x[0][1], x[0][0]))
+    ]
+
+    j.estado = "evaluada"
+    j.fecha_desde = min(dias)
+    j.fecha_hasta = max(dias)
+    j.dias_evaluados = len(dias)
+    j.aciertos = json.dumps(aciertos)
+    j.costo = j.apuesta * len(jugados) * len(dias)
+    j.premio = premio_uno * len(aciertos)
+
+
+def _jugada_a_dict(j: Jugada3):
+    numeros = json.loads(j.numeros)
+    return {
+        "id": j.id,
+        "nombre": j.nombre,
+        "numeros": numeros,
+        "cantidad_numeros": len(numeros),
+        "apuesta": j.apuesta,
+        "multiplicador": j.multiplicador,
+        "encime": j.encime,
+        "creada_en": j.creada_en.isoformat() if j.creada_en else None,
+        "fecha_corte": j.fecha_corte.isoformat() if j.fecha_corte else None,
+        "estado": j.estado,
+        "vista": j.vista,
+        "fecha_desde": j.fecha_desde.isoformat() if j.fecha_desde else None,
+        "fecha_hasta": j.fecha_hasta.isoformat() if j.fecha_hasta else None,
+        "dias_evaluados": j.dias_evaluados,
+        "aciertos": json.loads(j.aciertos or "[]"),
+        "costo": j.costo,
+        "premio": j.premio,
+        "neto": (j.premio or 0) - (j.costo or 0),
+    }
+
+
+@router.post("/jugadas-3")
+def guardar_jugada_3(datos: JugadaIn, db: Session = Depends(get_db)):
+    numeros = sorted({n for n in datos.numeros if len(n) == 3 and n.isdigit()})
+    if not numeros:
+        raise HTTPException(status_code=400, detail="No hay números válidos de 3 cifras")
+
+    ultima = db.query(func.max(R.fecha)).scalar()
+    j = Jugada3(
+        nombre=(datos.nombre or "").strip() or None,
+        numeros=json.dumps(numeros),
+        apuesta=datos.apuesta,
+        multiplicador=datos.multiplicador,
+        encime=datos.encime,
+        fecha_corte=_a_fecha(ultima) if ultima else None,
+    )
+    db.add(j)
+    db.commit()
+    db.refresh(j)
+    return _jugada_a_dict(j)
+
+
+@router.get("/jugadas-3")
+def listar_jugadas_3(db: Session = Depends(get_db)):
+    jugadas = db.query(Jugada3).order_by(Jugada3.creada_en.desc()).all()
+    for j in jugadas:
+        _evaluar(j, db)  # evalúa las pendientes contra los resultados nuevos
+    db.commit()
+    return [_jugada_a_dict(j) for j in jugadas]
+
+
+@router.delete("/jugadas-3/{jugada_id}")
+def eliminar_jugada_3(jugada_id: int, db: Session = Depends(get_db)):
+    j = db.get(Jugada3, jugada_id)
+    if not j:
+        raise HTTPException(status_code=404, detail="Jugada no encontrada")
+    db.delete(j)
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/jugadas-3/{jugada_id}/vista")
+def marcar_jugada_3_vista(jugada_id: int, db: Session = Depends(get_db)):
+    j = db.get(Jugada3, jugada_id)
+    if not j:
+        raise HTTPException(status_code=404, detail="Jugada no encontrada")
+    j.vista = True
+    db.commit()
+    return {"ok": True}

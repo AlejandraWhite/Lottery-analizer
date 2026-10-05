@@ -34,6 +34,8 @@ def _fecha_iso(valor):
     return valor.isoformat()
 
 def eliminar_resultado(db: Session, resultado_id: int, dias_limite: int = 7):
+    from services.historico4 import quitar_resultado  # import local para evitar ciclos
+
     resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
     if resultado is None:
         raise ResultadoNoEncontrado("Resultado no encontrado")
@@ -45,9 +47,10 @@ def eliminar_resultado(db: Session, resultado_id: int, dias_limite: int = 7):
         )
 
     revertir_registro_resultado(db, resultado)
+    quitar_resultado(db, resultado.fecha, resultado.numero_completo)  # antes de borrar
     db.delete(resultado)
     db.commit()
-
+    
 def _a_texto_numerico(valor) -> str:
     """Convierte el valor de una celda (int, float, str) a solo dígitos,
     sin arrastrar el '.0' que openpyxl agrega a los floats."""

@@ -534,8 +534,6 @@ def obtener_vista_excel(db: Session = Depends(get_db)):
     return construir_vista_excel(db)
 
 
-
-@app.get("/debug/conteo-por-terminacion")
 @app.get("/debug/fecha-maxima-global")
 def debug_fecha_maxima_global(db: Session = Depends(get_db)):
     maxima = db.query(func.max(Resultado.fecha)).scalar()
@@ -544,6 +542,7 @@ def debug_fecha_maxima_global(db: Session = Depends(get_db)):
         "fecha_maxima_en_resultado": maxima.isoformat() if maxima else None,
         "total_filas": total,
     }
+@app.get("/debug/conteo-por-terminacion")
 def debug_conteo(db: Session = Depends(get_db)):
     conteos = (
         db.query(Resultado.numero, func.count(Resultado.id))

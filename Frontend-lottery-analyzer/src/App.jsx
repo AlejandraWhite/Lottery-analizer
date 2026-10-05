@@ -18,6 +18,9 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import PantallaPermutantes from "./components/PantallaPermutantes";
 import PantallaTopPermutantes from "./components/PantallaTopPermutantes";
 import PantallaPermutantes3 from "./components/PantallaPermutantes3";
+import PantallaSeleccion3 from "./components/PantallaSeleccion3";
+import PantallaIntervalos3 from "./components/PantallaIntervalos3";
+
 import "./index.css";
 
 export default function App() {
@@ -217,6 +220,12 @@ export default function App() {
            >
          combinados 3 digitos
           </button>
+          <button className={ventana === "seleccion3" ? "activa" : ""} onClick={() => setVentana("seleccion3")}>
+          Selección 3 dígitos
+         </button>
+          <button className={ventana === "intervalos3" ? "activa" : ""} onClick={() => setVentana("intervalos3")}>
+          Atrasados 3 dígitos
+         </button>
           <button
        className={ventana === "permutantes" ? "activa" : ""}
       onClick={() => setVentana("permutantes")}
@@ -278,6 +287,12 @@ ventana === "permutantes3" ? (
     modoBusqueda={modoBusqueda}
   />
 ):
+ventana === "seleccion3" ? (
+  <PantallaSeleccion3 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
+ventana === "intervalos3" ? (
+  <PantallaIntervalos3 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
 ventana === "permutantes" ? (
   <PantallaPermutantes
     busqueda={busqueda}

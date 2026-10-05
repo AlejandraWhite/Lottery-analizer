@@ -271,3 +271,58 @@ export async function obtenerBacktest3(parametros) {
   }
   return respuesta.json();
 }
+
+export async function obtenerFechasCombinaciones3() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/fechas-3`);
+  if (!res.ok) throw new Error("No se pudieron cargar las fechas de 3 cifras");
+  return res.json();
+}
+
+// ===== Jugadas de 3 cifras (prueba hacia adelante) =====
+
+export async function guardarJugada3({ numeros, nombre, apuesta, multiplicador, encime }) {
+  const res = await fetch(`${API_URL}/historico-4-cifras/jugadas-3`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ numeros, nombre, apuesta, multiplicador, encime }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Error al guardar la jugada");
+  }
+
+  return res.json();
+}
+
+export async function listarJugadas3() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/jugadas-3`);
+  if (!res.ok) throw new Error("No se pudieron cargar las jugadas");
+  return res.json();
+}
+
+export async function eliminarJugada3(id) {
+  const res = await fetch(`${API_URL}/historico-4-cifras/jugadas-3/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Error al eliminar la jugada");
+  }
+
+  return res.json();
+}
+
+export async function marcarJugada3Vista(id) {
+  const res = await fetch(`${API_URL}/historico-4-cifras/jugadas-3/${id}/vista`, {
+    method: "POST",
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.detail || "Error al marcar la jugada como vista");
+  }
+
+  return res.json();
+}

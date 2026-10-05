@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { obtenerConteosPermutantes3 } from "../api";
+import { obtenerConteosPermutantes3, obtenerFechasCombinaciones3 } from "../api";
 import { terminosBusqueda } from "../utils";
-import BacktestSimulacro3 from "./BacktestSimulacro3";
 import "./PantallaPermutantes.css"; // mismos estilos que la de 4 cifras
 
 
@@ -67,32 +66,30 @@ function grupoCoincide(digitos, terminos) {
 export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusqueda = "cualquiera" }) {
   const [conteos, setConteos] = useState({});
   const [ultimasFechas, setUltimasFechas] = useState({});
+  const [fechas, setFechas] = useState({}); // todas las fechas de cada número 000-999
   const [totalHistorico, setTotalHistorico] = useState(0);
   const [filtroCantidad, setFiltroCantidad] = useState("");
-  const [diasReciente, setDiasReciente] = useState(365);
-  const [metas, setMetas] = useState({ diferentes: 108, repetidos: 40, pacha: 2 });
   const [error, setError] = useState("");
-  const [actualizando, setActualizando] = useState(false);
 
-  // Carga (o recarga) los resultados desde el servidor
+  // Carga los resultados desde el servidor
   const cargarDatos = async () => {
-    setActualizando(true);
     try {
-      const data = await obtenerConteosPermutantes3();
+      const [data, f] = await Promise.all([
+        obtenerConteosPermutantes3(),
+        obtenerFechasCombinaciones3(),
+      ]);
+      setFechas(f.fechas || {});
       setConteos(data.conteos);
       setUltimasFechas(data.ultimas_fechas || {});
       setTotalHistorico(data.total);
       setError("");
     } catch (e) {
       setError(e.message);
-    } finally {
-      setActualizando(false);
     }
   };
 
   useEffect(() => {
     cargarDatos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const grupos = useMemo(
@@ -186,10 +183,14 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     () =>
       Array.from({ length: 1000 }, (_, i) => {
         const combinacion = String(i).padStart(3, "0");
+        const fs = fechas[combinacion] || []; // vienen en orden ascendente
+        const n = fs.length;
         return {
           combinacion,
           cantidad: conteos[combinacion] || 0,
-          ultimaFecha: ultimasFechas[combinacion] || null,
+          ultimaFecha: fs[n - 1] || ultimasFechas[combinacion] || null,
+          penultimaFecha: fs[n - 2] || null,
+          antepenultimaFecha: fs[n - 3] || null,
         };
       }).sort((a, b) => {
         if (a.ultimaFecha && b.ultimaFecha) {
@@ -201,7 +202,7 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
         if (b.ultimaFecha) return 1;
         return a.combinacion.localeCompare(b.combinacion); // nunca han caído
       }),
-    [conteos, ultimasFechas]
+    [conteos, ultimasFechas, fechas]
   );
 
   // Las mismas 1000 combinaciones, del que más cae al que menos cae
@@ -248,114 +249,7 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     return tipos;
   }, [todas]);
 
-  // Selección de números: por defecto 108 todos diferentes, 40 con un dígito
-  // repetido 2 veces y 2 pacha (editable). Las más frecuentes primero,
-  // excluyendo las que cayeron en los últimos `diasReciente` días
-  // (las pacha no llevan ese filtro).
-  const seleccion = useMemo(() => {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const limite = new Date(hoy);
-    limite.setDate(limite.getDate() - (Number(diasReciente) || 0));
-
-    const cayoReciente = (iso) => {
-      if (!iso) return false; // nunca ha caído: no es reciente
-      const [y, m, d] = iso.split("-").map(Number);
-      return new Date(y, m - 1, d) >= limite;
-    };
-
-    // Más veces primero; si empatan, la que cayó hace más tiempo
-    const ordenar = (a, b) =>
-      b.cantidad - a.cantidad ||
-      (a.ultimaFecha || "").localeCompare(b.ultimaFecha || "") ||
-      a.combinacion.localeCompare(b.combinacion);
-
-    const distintos = (t) => new Set(t.combinacion).size;
-
-    return {
-      diferentes: todas
-        .filter((t) => distintos(t) === 3 && !cayoReciente(t.ultimaFecha))
-        .sort(ordenar)
-        .slice(0, Number(metas.diferentes) || 0),
-      repetidos: todas
-        .filter((t) => distintos(t) === 2 && !cayoReciente(t.ultimaFecha))
-        .sort(ordenar)
-        .slice(0, Number(metas.repetidos) || 0),
-      pacha: todas
-        .filter((t) => distintos(t) === 1)
-        .sort(ordenar)
-        .slice(0, Number(metas.pacha) || 0),
-    };
-  }, [todas, diasReciente, metas]);
-
-  const totalMetas =
-    (Number(metas.diferentes) || 0) +
-    (Number(metas.repetidos) || 0) +
-    (Number(metas.pacha) || 0);
-
-  // Reparte un total en la misma proporción de 108 / 40 / 2
-  const repartirTotal = (valorTotal) => {
-    const n = Math.max(0, Math.min(1000, Math.floor(Number(valorTotal) || 0)));
-    const pacha = Math.round((n * 2) / 150);
-    const repetidos = Math.round((n * 40) / 150);
-    setMetas({ diferentes: n - pacha - repetidos, repetidos, pacha });
-  };
-
-  const numerosSeleccion = useMemo(
-    () =>
-      [...seleccion.diferentes, ...seleccion.repetidos, ...seleccion.pacha].map(
-        (t) => t.combinacion
-      ),
-    [seleccion]
-  );
-
-  const totalSeleccion = numerosSeleccion.length;
-
-  // Cuántos de la selección coinciden con el buscador global
-  const coincidenEnSeleccion =
-    terminos.length > 0 || terminosFecha.length > 0
-      ? [...seleccion.diferentes, ...seleccion.repetidos, ...seleccion.pacha].filter(
-          coincideBusquedaTodas
-        ).length
-      : 0;
-
   const columnasPerm = Array.from({ length: MAX_PERMUTACIONES });
-
-  // Bloque de una categoría de la selección (con búsqueda global)
-  const renderListaSeleccion = (titulo, lista, meta) => (
-    <div className="perm-scroll perm-seleccion-bloque">
-      <h4>
-        {titulo} ({lista.length}/{meta})
-      </h4>
-      <table className="tabla-permutantes">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Número</th>
-            <th>Cantidad</th>
-            <th>%</th>
-            <th>Última vez</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lista.map((t, i) => (
-            <tr
-              key={t.combinacion}
-              className={coincideBusquedaTodas(t) ? "fila-busqueda" : ""}
-            >
-              <td>{i + 1}</td>
-              <td className="perm-grupo-cron">
-                <strong>{t.combinacion}</strong>
-              </td>
-              <td className="perm-cantidad">{t.cantidad}</td>
-              <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
-              <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
 
   return (
     <div className="permutantes">
@@ -400,6 +294,8 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 <th className="sticky-1">#</th>
                 <th>Combinación</th>
                 <th>Última vez</th>
+                <th>Penúltima</th>
+                <th>Antepenúltima</th>
                 <th>Cantidad</th>
                 <th>%</th>
               </tr>
@@ -417,6 +313,8 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                     <strong>{t.combinacion}</strong>
                   </td>
                   <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
+                  <td>{t.penultimaFecha ? formatoFecha(t.penultimaFecha) : "—"}</td>
+                  <td>{t.antepenultimaFecha ? formatoFecha(t.antepenultimaFecha) : "—"}</td>
                   <td className="perm-cantidad">{t.cantidad}</td>
                   <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
                 </tr>
@@ -424,7 +322,7 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
             </tbody>
             <tfoot>
               <tr>
-                <td colSpan={3}>Total</td>
+                <td colSpan={5}>Total</td>
                 <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
                 <td className="perm-porcentaje">100%</td>
               </tr>
@@ -442,6 +340,8 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 <th>Cantidad</th>
                 <th>%</th>
                 <th>Última vez</th>
+                <th>Penúltima</th>
+                <th>Antepenúltima</th>
               </tr>
             </thead>
             <tbody>
@@ -459,6 +359,8 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                   <td className="perm-cantidad">{t.cantidad}</td>
                   <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
                   <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
+                  <td>{t.penultimaFecha ? formatoFecha(t.penultimaFecha) : "—"}</td>
+                  <td>{t.antepenultimaFecha ? formatoFecha(t.antepenultimaFecha) : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -467,12 +369,53 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 <td colSpan={2}>Total</td>
                 <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
                 <td className="perm-porcentaje">100%</td>
-                <td></td>
+                <td colSpan={3}></td>
               </tr>
             </tfoot>
           </table>
         </div>
+      </div>
 
+      {/* ============ ZONA INFERIOR ============ */}
+      <div className="perm-inferior">
+        {/* Resumen por tipo de repetición */}
+        <div className="perm-scroll perm-resumen-tipos">
+          <table className="tabla-permutantes">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Veces</th>
+                <th>% real</th>
+                <th>% esperado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tiposRepeticion.map((t) => (
+                <tr key={t.nombre}>
+                  <td>{t.nombre}</td>
+                  <td className="perm-cantidad">{t.cantidad.toLocaleString()}</td>
+                  <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
+                  <td className="perm-porcentaje">
+                    {((t.posibles / 1000) * 100).toFixed(1)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>Total</td>
+                <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
+                <td className="perm-porcentaje">100%</td>
+                <td className="perm-porcentaje">100%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* ============ GRUPOS Y SUS COMBINACIONES (abajo) ============ */}
+      <div className="perm-grupos-abajo">
+        <h4>Grupos y sus combinaciones</h4>
         {/* ============ POR FRECUENCIA + COMBINACIONES ============ */}
         <div className="perm-scroll perm-scroll-normal">
           <table className="tabla-permutantes tabla-normal">
@@ -528,136 +471,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
               </tr>
             </tfoot>
           </table>
-        </div>
-      </div>
-
-      {/* ============ ZONA INFERIOR ============ */}
-      <div className="perm-inferior">
-        {/* Resumen por tipo de repetición */}
-        <div className="perm-scroll perm-resumen-tipos">
-          <table className="tabla-permutantes">
-            <thead>
-              <tr>
-                <th>Tipo</th>
-                <th>Veces</th>
-                <th>% real</th>
-                <th>% esperado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tiposRepeticion.map((t) => (
-                <tr key={t.nombre}>
-                  <td>{t.nombre}</td>
-                  <td className="perm-cantidad">{t.cantidad.toLocaleString()}</td>
-                  <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
-                  <td className="perm-porcentaje">
-                    {((t.posibles / 1000) * 100).toFixed(1)}%
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td>Total</td>
-                <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
-                <td className="perm-porcentaje">100%</td>
-                <td className="perm-porcentaje">100%</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* Prueba hacia atrás */}
-        <BacktestSimulacro3 />
-
-        {/* Selección de números */}
-        <div className="perm-seleccion">
-          <h3>
-            Selección de {totalSeleccion} números
-            {(terminos.length > 0 || terminosFecha.length > 0) &&
-              ` · ${coincidenEnSeleccion} coinciden`}
-          </h3>
-          <div className="perm-filtros">
-            <label>
-              No han caído en los últimos (días):
-              <input
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={diasReciente}
-                onChange={(e) => setDiasReciente(e.target.value)}
-              />
-            </label>
-            <label>
-              Total de números:
-              <input
-                type="number"
-                min="0"
-                max="1000"
-                inputMode="numeric"
-                value={totalMetas}
-                onChange={(e) => repartirTotal(e.target.value)}
-              />
-            </label>
-            <label>
-              Diferentes:
-              <input
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={metas.diferentes}
-                onChange={(e) => setMetas((m) => ({ ...m, diferentes: e.target.value }))}
-              />
-            </label>
-            <label>
-              Un dígito repetido:
-              <input
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={metas.repetidos}
-                onChange={(e) => setMetas((m) => ({ ...m, repetidos: e.target.value }))}
-              />
-            </label>
-            <label>
-              Pacha:
-              <input
-                type="number"
-                min="0"
-                inputMode="numeric"
-                value={metas.pacha}
-                onChange={(e) => setMetas((m) => ({ ...m, pacha: e.target.value }))}
-              />
-            </label>
-            <button
-              type="button"
-              className="perm-limpiar"
-              onClick={cargarDatos}
-              disabled={actualizando}
-            >
-              {actualizando ? "⏳ Actualizando..." : "🔄 Actualizar resultados"}
-            </button>
-          </div>
-
-          <div className="perm-seleccion-grid">
-            {renderListaSeleccion(
-              "Tres cifras diferentes",
-              seleccion.diferentes,
-              Number(metas.diferentes) || 0
-            )}
-            {renderListaSeleccion(
-              "Un dígito repetido 2 veces",
-              seleccion.repetidos,
-              Number(metas.repetidos) || 0
-            )}
-            {renderListaSeleccion(
-              "Pacha (tres iguales)",
-              seleccion.pacha,
-              Number(metas.pacha) || 0
-            )}
-          </div>
-
-          <p className="perm-seleccion-copiar">{numerosSeleccion.join(" ")}</p>
         </div>
       </div>
     </div>

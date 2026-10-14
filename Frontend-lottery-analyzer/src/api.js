@@ -329,3 +329,10 @@ export async function marcarJugada3Vista(id) {
 
   return res.json();
 }
+
+export async function obtenerFechasCombinaciones4() {
+  const res = await fetch(`${API_URL}/historico-4-cifras/fechas-4`);
+  if (!res.ok) throw new Error("No se pudieron cargar las fechas de 4 cifras");
+  return res.json();
+}
+ 

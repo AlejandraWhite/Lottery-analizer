@@ -21,6 +21,7 @@ import PantallaTopPermutantes from "./components/PantallaTopPermutantes";
 import PantallaPermutantes3 from "./components/PantallaPermutantes3";
 import PantallaSeleccion3 from "./components/PantallaSeleccion3";
 import PantallaIntervalos3 from "./components/PantallaIntervalos3";
+import PantallaIntervalos4 from "./components/PantallaIntervalos4";
 
 import "./index.css";
 
@@ -231,10 +232,13 @@ async function manejarSincronizar() {
          combinados 3 digitos
           </button>
           <button className={ventana === "seleccion3" ? "activa" : ""} onClick={() => setVentana("seleccion3")}>
-          Selección 3 dígitos
+          Demo 3 dígitos
          </button>
           <button className={ventana === "intervalos3" ? "activa" : ""} onClick={() => setVentana("intervalos3")}>
           Atrasados 3 dígitos
+         </button>
+          <button className={ventana === "intervalos4" ? "activa" : ""} onClick={() => setVentana("intervalos4")}>
+          Atrasados 4 dígitos
          </button>
           <button
        className={ventana === "permutantes" ? "activa" : ""}
@@ -315,6 +319,9 @@ ventana === "seleccion3" ? (
 ) :
 ventana === "intervalos3" ? (
   <PantallaIntervalos3 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
+ventana === "intervalos4" ? (
+  <PantallaIntervalos4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 ) :
 ventana === "permutantes" ? (
   <PantallaPermutantes

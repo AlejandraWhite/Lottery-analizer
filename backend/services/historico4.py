@@ -350,7 +350,12 @@ def backfill_desde_resultado(db: Session) -> int:
     """
     from models import Resultado  # import local para evitar ciclo de imports
 
-    resultados = db.query(Resultado).order_by(Resultado.fecha.asc()).all()
+    resultados = (
+        db.query(Resultado)
+        .filter(Resultado.loteria != "Histórico")   # la siembra del Excel no son sorteos reales de 4 cifras
+        .order_by(Resultado.fecha.asc())
+        .all()
+    )
     agregados = 0
 
     for r in resultados:

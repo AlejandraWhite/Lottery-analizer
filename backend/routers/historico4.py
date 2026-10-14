@@ -8,7 +8,7 @@ import re
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
-from sqlalchemy import extract, func, nullslast, select
+from sqlalchemy import extract, func, nullslast, select, text
 from sqlalchemy.orm import Session, aliased
 from typing import Literal, Optional
 from database import SessionLocal
@@ -92,6 +92,29 @@ def fechas_por_combinacion_3(db: Session = Depends(get_db)):
         fechas.setdefault(numero[-3:], []).append(fecha.isoformat())
         total += 1
 
+    return {"total": total, "fechas": fechas}
+
+@router.get("/fechas-4")
+def fechas_por_combinacion_4(db: Session = Depends(get_db)):
+    """Para cada número de 4 cifras (0000-9999), todas las fechas en que cayó,
+    en orden. El frontend calcula los intervalos."""
+    filas = (
+        db.query(R.fecha, R.numero)
+        .filter(R.fecha.isnot(None), R.numero.isnot(None))
+        .order_by(R.fecha)
+        .all()
+    )
+ 
+    fechas = {}
+    total = 0
+    for fecha, numero in filas:
+        if len(numero) != 4 or not numero.isdigit():
+            continue
+        if hasattr(fecha, "hour"):
+            fecha = fecha.date()
+        fechas.setdefault(numero, []).append(fecha.isoformat())
+        total += 1
+ 
     return {"total": total, "fechas": fechas}
 
 @router.get("")
@@ -498,3 +521,143 @@ def marcar_jugada_3_vista(jugada_id: int, db: Session = Depends(get_db)):
     j.vista = True
     db.commit()
     return {"ok": True}
+
+
+    
+@router.get("/diagnostico-ceros")
+def diagnostico_ceros(limite: int = 100, db: Session = Depends(get_db)):
+    """Filas guardadas como 0000..0099 (sospechosas) con su fila de Excel."""
+    filas = (
+        db.query(R.id, R.fila_excel, R.fecha, R.numero, R.loteria, R.columnas_extra)
+        .filter(R.numero.like("00%"))
+        .order_by(R.fila_excel.asc().nullslast(), R.id.asc())
+        .limit(limite)
+        .all()
+    )
+    por_numero = (
+        db.query(R.numero, func.count(R.id))
+        .filter(R.numero.like("00%"))
+        .group_by(R.numero)
+        .order_by(func.count(R.id).desc())
+        .limit(30)
+        .all()
+    )
+    return {
+        "mas_frecuentes": [{"numero": n, "veces": c} for n, c in por_numero],
+        "filas": [
+            {
+                "id": i, "fila_excel": fe,
+                "fecha": f.isoformat() if f else None,
+                "numero": n, "loteria": lo, "columnas_extra": ce,
+            }
+            for i, fe, f, n, lo, ce in filas
+        ],
+    }
+ 
+ 
+# ---------------------------------------------------------------
+# PARTE 2 — importador estricto
+# En services/historico4.py REEMPLAZA la función normalizar_numero
+# y, dentro de importar_historico, el bloque "# --- Número ---".
+#
+# Idea: Excel solo "pierde" ceros cuando el numero es de 3 cifras
+# (502 -> 0502). Un 2, un 52 o un 6 NO son un numero de 4 cifras
+# con ceros perdidos: son otra cosa (indice, conteo, serie...). Esos
+# se guardan tal cual y quedan anotados en `observacion` en vez de
+# convertirse en 0002 / 0052 / 0006.
+# ---------------------------------------------------------------
+ 
+def normalizar_numero(valor) -> str:
+    """4 cifras exactas. Solo recupera UN cero perdido (502 -> '0502')."""
+    if isinstance(valor, float) and valor.is_integer():
+        valor = int(valor)
+    texto = str(valor).strip()
+    if not texto.isdigit() or len(texto) not in (3, 4):
+        raise ValueError(f"no es un número de 4 cifras: {valor!r}")
+    return texto.zfill(4)
+ 
+ 
+# --- dentro de importar_historico, reemplaza el bloque de Número por:
+#
+#            numero = None
+#            if hay_numero:
+#                try:
+#                    numero = normalizar_numero(valor_numero)
+#                except ValueError:
+#                    numero = str(valor_numero).strip()[:20]
+#                    notas.append(f"Número no estándar en el Excel: '{valor_numero}'")
+
+
+FILTRO_LOTE = "loteria = 'Histórico' AND fila_excel IS NULL"
+ 
+ 
+@router.get("/diagnostico-lote")
+def diagnostico_lote(detalle: bool = False, db: Session = Depends(get_db)):
+    """Solo cuenta. No modifica nada. Con ?detalle=true lista las filas
+    que NO empiezan en '00' (las que todavía hay que revisar)."""
+    if detalle:
+        filas = db.execute(text(f"""
+            SELECT id, fecha, to_char(fecha,'Dy'), numero
+            FROM resultados_historico_4cifras
+            WHERE {FILTRO_LOTE} AND numero NOT LIKE '00%'
+            ORDER BY fecha
+        """)).fetchall()
+        return {"cantidad": len(filas),
+                "filas": [f"{f.isoformat()} {d} {n} (id {i})" for i, f, d, n in filas]}
+ 
+    por_dia = db.execute(text(f"""
+        SELECT to_char(fecha, 'Dy') AS dia, count(*)
+        FROM resultados_historico_4cifras
+        WHERE {FILTRO_LOTE}
+        GROUP BY 1 ORDER BY 2 DESC
+    """)).fetchall()
+ 
+    r = db.execute(text(f"""
+        SELECT count(*),
+               count(*) FILTER (WHERE numero LIKE '0%'),
+               count(*) FILTER (WHERE numero LIKE '000%'),
+               min(id), max(id), min(fecha), max(fecha)
+        FROM resultados_historico_4cifras
+        WHERE {FILTRO_LOTE}
+    """)).fetchone()
+ 
+    return {
+        "por_dia_semana": {d: c for d, c in por_dia},
+        "total": r[0],
+        "empiezan_en_0": r[1],
+        "empiezan_en_000": r[2],
+        "id_min": r[3], "id_max": r[4],
+        "fecha_min": r[5].isoformat() if r[5] else None,
+        "fecha_max": r[6].isoformat() if r[6] else None,
+    }
+ 
+ 
+@router.post("/limpiar-lote")
+def limpiar_lote(confirmar: bool = False, solo_00: bool = True, db: Session = Depends(get_db)):
+    """Borra del lote SOLO las filas que empiezan en '00' (0000-0099): casi seguro
+    son contadores rellenados con ceros (un número real empieza en 00 solo el 1%).
+    Guarda copia en resultados_historico_4cifras_respaldo_lote antes de borrar.
+    Sin ?confirmar=true solo dice cuántas borraría."""
+    filtro = FILTRO_LOTE + (" AND numero LIKE '00%'" if solo_00 else "")
+    cuantas = db.execute(text(
+        f"SELECT count(*) FROM resultados_historico_4cifras WHERE {filtro}"
+    )).scalar()
+    if not confirmar:
+        return {"borraria": cuantas, "aviso": "Añade ?confirmar=true para ejecutar"}
+ 
+    db.execute(text(f"""
+        CREATE TABLE IF NOT EXISTS resultados_historico_4cifras_respaldo_lote AS
+        SELECT * FROM resultados_historico_4cifras WHERE {filtro}
+    """))
+    # (si la tabla de respaldo ya existía, añade lo nuevo sin duplicar ids)
+    db.execute(text(f"""
+        INSERT INTO resultados_historico_4cifras_respaldo_lote
+        SELECT * FROM resultados_historico_4cifras
+        WHERE {filtro}
+          AND id NOT IN (SELECT id FROM resultados_historico_4cifras_respaldo_lote)
+    """))
+    borradas = db.execute(text(
+        f"DELETE FROM resultados_historico_4cifras WHERE {filtro}"
+    )).rowcount
+    db.commit()
+    return {"respaldadas_y_borradas": borradas, "resumen": servicio.resumen_historico(db)}

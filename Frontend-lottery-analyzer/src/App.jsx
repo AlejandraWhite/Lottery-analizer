@@ -22,6 +22,7 @@ import PantallaPermutantes3 from "./components/PantallaPermutantes3";
 import PantallaSeleccion3 from "./components/PantallaSeleccion3";
 import PantallaIntervalos3 from "./components/PantallaIntervalos3";
 import PantallaIntervalos4 from "./components/PantallaIntervalos4";
+import PantallaMiercolesAnalisis from "./components/PantallaMiercolesAnalisis";
 
 import "./index.css";
 
@@ -219,6 +220,9 @@ async function manejarSincronizar() {
           >
             Miércoles
           </button>
+          <button className={ventana === "miercolesAnalisis" ? "activa" : ""} onClick={() => setVentana("miercolesAnalisis")}>
+           Miércoles análisis
+         </button>
           <button
             className={ventana === "viernes" ? "activa" : ""}
             onClick={() => setVentana("viernes")}
@@ -299,6 +303,9 @@ async function manejarSincronizar() {
 ) : ventana === "miercoles" ? (
   <PantallaMiercoles busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 ) : 
+ventana === "miercolesAnalisis" ? (
+  <PantallaMiercolesAnalisis busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
+) :
 ventana === "historico4" ? (
   <PantallaHistorico4 busqueda={busqueda} busquedaFecha={busquedaFecha} modoBusqueda={modoBusqueda} />
 ) :

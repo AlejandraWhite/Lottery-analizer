@@ -336,3 +336,8 @@ export async function obtenerFechasCombinaciones4() {
   return res.json();
 }
  
+export async function obtenerAnalisisMiercoles2() {
+  const res = await fetch(`${API_URL}/miercoles/analisis-2cifras`);
+  if (!res.ok) throw new Error("No se pudo cargar el análisis de miércoles");
+  return res.json();
+}

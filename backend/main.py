@@ -16,6 +16,7 @@ import models_scraping
 import models_historico4                   
 from routers import historico4 as router_historico4
 from routers import miercoles_analisis
+from routers import viernes_analisis
 from services.historico4 import backfill_desde_resultado, resumen_historico
 from sqlalchemy import text
 from database import SessionLocal
@@ -65,6 +66,7 @@ app.add_middleware(
 )
 
 app.include_router(miercoles_analisis.router)
+app.include_router(viernes_analisis.router)
 app.include_router(router_historico4.router)
 # =========================================================
 # CONEXIÓN A BASE DE DATOS

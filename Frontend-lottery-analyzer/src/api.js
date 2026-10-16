@@ -341,3 +341,9 @@ export async function obtenerAnalisisMiercoles2() {
   if (!res.ok) throw new Error("No se pudo cargar el análisis de miércoles");
   return res.json();
 }
+
+export async function obtenerAnalisisViernes2() {
+  const res = await fetch(`${API_URL}/viernes/analisis-2cifras`);
+  if (!res.ok) throw new Error("No se pudo cargar el análisis de viernes");
+  return res.json();
+}

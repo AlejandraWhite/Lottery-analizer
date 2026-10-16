@@ -9,6 +9,47 @@
   font-weight: 600;
 }
 
+/* ---------- Tablas compactas: columnas del ancho de su contenido ---------- */
+
+.analisis-mie .tabla-compacta {
+  width: auto;          /* la tabla no se estira a todo el ancho */
+  min-width: 0;
+  table-layout: auto;
+}
+
+.analisis-mie .tabla-compacta th,
+.analisis-mie .tabla-compacta td {
+  width: 1%;            /* cada columna se encoge a su contenido */
+  min-width: 0;
+  padding: 4px 6px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* Los encabezados largos se parten en varias líneas en vez de ensanchar la columna */
+.analisis-mie .tabla-compacta th {
+  white-space: normal;
+  max-width: 84px;
+  line-height: 1.15;
+  vertical-align: bottom;
+}
+
+/* Columna de fechas: es la única que puede ocupar el espacio sobrante */
+.analisis-mie .tabla-compacta th:last-child,
+.analisis-mie .tabla-compacta td.col-fechas {
+  width: auto;
+  max-width: none;
+  min-width: 360px;
+  white-space: normal;
+  text-align: left;
+}
+
+/* En la tabla por lotería no hay columna de fechas: todas las columnas quedan compactas */
+.analisis-mie .tabla-compacta th[colspan],
+.analisis-mie .tabla-compacta thead tr:nth-child(2) th {
+  max-width: 84px;
+}
+
 .analisis-mie .fila-click { cursor: pointer; }
 .analisis-mie .fila-click:hover { filter: brightness(1.08); }
 

@@ -72,11 +72,12 @@ function ListaFechas({ fechas, gaps, conteo, fechaCoincide, limite = 0 }) {
 }
 
 // =========================================================
-// Tabla de intervalos completa (todo el histórico / miércoles)
+// Tabla de intervalos (una sola tabla: orden + filtros)
 // =========================================================
 
-function FilaIntervalo({ t, indice, filtro, limiteFechas }) {
+function FilaIntervalo({ t, indice, filtro, limiteFechas, atrasada }) {
   const coincide = filtro.numero(t.combinacion) || t.fechas.some(filtro.fecha);
+  const claseAtraso = atrasada ? "celda-atrasada" : "";
   return (
     <tr className={coincide ? "fila-busqueda" : ""}>
       <td>{indice + 1}</td>
@@ -85,15 +86,14 @@ function FilaIntervalo({ t, indice, filtro, limiteFechas }) {
       </td>
       <td className="perm-cantidad">{t.cantidad}</td>
       <td>{entero(t.promedio)}</td>
-      <td>{entero(t.mediana)}</td>
       <td>{entero(t.min)}</td>
       <td>{entero(t.max)}</td>
       <td>{decimal(t.cv)}</td>
       <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-      <td>{entero(t.diasSinCaer)}</td>
-      <td>{entero(t.atraso)}</td>
-      <td className="perm-porcentaje">{veces(t.veces)}</td>
-      <td style={{ minWidth: 460, whiteSpace: "normal", textAlign: "left" }}>
+      <td className={claseAtraso}>{entero(t.diasSinCaer)}</td>
+      <td className={claseAtraso}>{entero(t.atraso)}</td>
+      <td className={`perm-porcentaje ${claseAtraso}`}>{veces(t.veces)}</td>
+      <td className="col-fechas">
         <ListaFechas
           fechas={t.fechas}
           gaps={t.gaps}
@@ -108,6 +108,11 @@ function FilaIntervalo({ t, indice, filtro, limiteFechas }) {
 
 function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral, unidad, limiteFechas = 12 }) {
   const [orden, setOrden] = useState("numero");
+  const [soloAtrasados, setSoloAtrasados] = useState(false);
+  const [soloBusqueda, setSoloBusqueda] = useState(false);
+
+  const esAtrasada = (t) =>
+    t.cantidad >= Number(minVeces) && t.veces != null && t.veces >= Number(umbral);
 
   const atrasados = useMemo(
     () =>
@@ -117,8 +122,20 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
     [stats, minVeces, umbral]
   );
 
-  const todos = useMemo(() => {
-    const copia = [...stats];
+  const coincideBusqueda = (t) => filtro.numero(t.combinacion) || t.fechas.some(filtro.fecha);
+
+  const filas = useMemo(() => {
+    let copia = [...stats];
+    if (soloAtrasados) {
+      copia = copia.filter(
+        (t) => t.cantidad >= Number(minVeces) && t.veces != null && t.veces >= Number(umbral)
+      );
+    }
+    if (soloBusqueda && filtro.hayBusqueda) {
+      copia = copia.filter(
+        (t) => filtro.numero(t.combinacion) || t.fechas.some(filtro.fecha)
+      );
+    }
     const nulosAlFinal = (campo, desc) => (a, b) => {
       const x = a[campo], y = b[campo];
       if (x == null && y == null) return a.combinacion.localeCompare(b.combinacion);
@@ -128,13 +145,13 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
     };
     switch (orden) {
       case "cantidad": return copia.sort(nulosAlFinal("cantidad", true));
-      case "promedio": return copia.sort(nulosAlFinal("promedio", false));
       case "veces": return copia.sort(nulosAlFinal("veces", true));
       case "sinCaer": return copia.sort(nulosAlFinal("diasSinCaer", true));
+      case "atraso": return copia.sort(nulosAlFinal("atraso", true));
       case "cv": return copia.sort(nulosAlFinal("cv", false));
-      default: return copia;
+      default: return copia.sort((a, b) => a.combinacion.localeCompare(b.combinacion));
     }
-  }, [stats, orden]);
+  }, [stats, orden, soloAtrasados, soloBusqueda, minVeces, umbral, filtro]);
 
   const promedioGlobal = useMemo(() => {
     const con = stats.filter((t) => t.promedio != null);
@@ -147,7 +164,6 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
       <th>Núm.</th>
       <th>Veces</th>
       <th>Prom. {unidad} entre caídas</th>
-      <th>Mediana</th>
       <th>Mín</th>
       <th>Máx</th>
       <th title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio">
@@ -163,7 +179,7 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
     </tr>
   );
 
-  const coinciden = stats.filter((t) => filtro.numero(t.combinacion) || t.fechas.some(filtro.fecha)).length;
+  const coinciden = stats.filter(coincideBusqueda).length;
 
   return (
     <div>
@@ -175,41 +191,60 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
         {descripcion} Promedio general entre caídas: {entero(promedioGlobal)} {unidad}.
       </p>
 
-      <h4>Atrasados ({atrasados.length})</h4>
-      <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
-          <thead>{encabezado}</thead>
-          <tbody>
-            {atrasados.map((t, i) => (
-              <FilaIntervalo key={t.combinacion} t={t} indice={i} filtro={filtro} limiteFechas={limiteFechas} />
-            ))}
-          </tbody>
-        </table>
-      </div>
       {atrasados.length > 0 && (
-        <p className="perm-seleccion-copiar">{atrasados.map((t) => t.combinacion).join(" ")}</p>
+        <p className="perm-seleccion-copiar">
+          <strong>Atrasados ({atrasados.length}):</strong> {atrasados.map((t) => t.combinacion).join(" ")}
+        </p>
       )}
 
       <div className="perm-filtros">
-        <h4 style={{ margin: 0 }}>Todas las terminaciones (00-99)</h4>
         <label>
           Ordenar por:
           <select value={orden} onChange={(e) => setOrden(e.target.value)}>
             <option value="numero">Número</option>
             <option value="cantidad">Veces que ha caído</option>
-            <option value="promedio">Promedio entre caídas (menor primero)</option>
             <option value="sinCaer">{unidad} sin caer</option>
+            <option value="atraso">Atraso ({unidad})</option>
             <option value="veces">× su promedio (más atrasado)</option>
             <option value="cv">Regularidad (más regular primero)</option>
           </select>
         </label>
+        <label className="toggle-modo-busqueda">
+          <input
+            type="checkbox"
+            checked={soloAtrasados}
+            onChange={(e) => setSoloAtrasados(e.target.checked)}
+          />
+          Solo atrasados
+        </label>
+        {filtro.hayBusqueda && (
+          <label className="toggle-modo-busqueda">
+            <input
+              type="checkbox"
+              checked={soloBusqueda}
+              onChange={(e) => setSoloBusqueda(e.target.checked)}
+            />
+            Solo los que coinciden con la búsqueda
+          </label>
+        )}
+        <span>
+          {filas.length} de {stats.length} terminaciones
+        </span>
       </div>
+
       <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
+        <table className="tabla-permutantes tabla-cron tabla-compacta">
           <thead>{encabezado}</thead>
           <tbody>
-            {todos.map((t, i) => (
-              <FilaIntervalo key={t.combinacion} t={t} indice={i} filtro={filtro} limiteFechas={limiteFechas} />
+            {filas.map((t, i) => (
+              <FilaIntervalo
+                key={t.combinacion}
+                t={t}
+                indice={i}
+                filtro={filtro}
+                limiteFechas={limiteFechas}
+                atrasada={esAtrasada(t)}
+              />
             ))}
           </tbody>
         </table>
@@ -225,7 +260,6 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
 const CAMPOS_ORDEN = [
   { v: "numero", t: "Número" },
   { v: "cantidad", t: "Veces que ha caído" },
-  { v: "promedio", t: "Promedio entre caídas (menor primero)" },
   { v: "diasSinCaer", t: "Tiempo sin caer" },
   { v: "atraso", t: "Atraso" },
   { v: "veces", t: "× su promedio (más atrasado)" },
@@ -310,7 +344,7 @@ function TablaTres({ stats, filtro, minVeces, umbral, unidad }) {
       </div>
 
       <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
+        <table className="tabla-permutantes tabla-cron tabla-compacta">
           <thead>
             <tr>
               <th rowSpan={2}>#</th>

@@ -1,0 +1,24 @@
+/* Estilos extra para PantallaViernesAnalisis.
+   El resto viene de PantallaMiercolesAnalisis.css y PantallaPermutantes.css
+   (la pantalla usa también la clase raíz .analisis-mie). */
+
+.analisis-mie .th-risaralda { background: rgba(236, 72, 153, 0.18); }
+.analisis-mie .th-medellin { background: rgba(249, 115, 22, 0.2); }
+.analisis-mie .th-santander { background: rgba(20, 184, 166, 0.2); }
+
+.analisis-mie .chip-vie { background: rgba(236, 72, 153, 0.22); }
+
+/* Ranking "los que más caen" */
+.analisis-mie .tabla-compacta td.barra-cel {
+  width: auto;
+  min-width: 160px;
+  text-align: left;
+}
+
+.analisis-mie .barra-ranking {
+  display: block;
+  height: 10px;
+  min-width: 2px;
+  border-radius: 2px;
+  background: #d4a93e;
+}

@@ -591,7 +591,7 @@ export default function PantallaViernesAnalisis({ busqueda, busquedaFecha, modoB
   const [error, setError] = useState("");
   const [actualizando, setActualizando] = useState(false);
 
-  const [seccion, setSeccion] = useState("viernes");
+  const [seccion, setSeccion] = useState("historico");
   const [minVeces, setMinVeces] = useState(3);
   const [umbral, setUmbral] = useState(1.5);
   const [divisorTres, setDivisorTres] = useState(7); // 7 = viernes, 1 = días

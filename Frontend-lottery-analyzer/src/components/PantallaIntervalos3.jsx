@@ -109,7 +109,6 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
       <th>Número</th>
       <th>Veces</th>
       <th>Prom. días entre caídas</th>
-      <th>Mediana</th>
       <th>Mín</th>
       <th>Máx</th>
       <th title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio">
@@ -117,7 +116,8 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
       </th>
       <th>Última vez</th>
       <th>Días sin caer</th>
-      <th>Atraso (días)</th>
+      <th>Atraso 
+        (días) /promedio</th>
       <th>× su promedio</th>
       <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
         Todas las veces que cayó (antigua → reciente)
@@ -133,7 +133,7 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
       </td>
       <td className="perm-cantidad">{t.cantidad}</td>
       <td>{entero(t.promedio)}</td>
-      <td>{entero(t.mediana)}</td>
+    
       <td>{entero(t.min)}</td>
       <td>{entero(t.max)}</td>
       <td>{decimal(t.cv)}</td>
@@ -175,7 +175,7 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
         entre caídas: {entero(promedioGlobal)} días · Nunca han caído: {nuncaHanCaido}
       </p>
 
-      <div className="perm-filtros">
+      {/* <div className="perm-filtros">
         <label>
           Mínimo de veces caído:
           <input
@@ -205,10 +205,10 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
         >
           {actualizando ? "⏳ Actualizando..." : "🔄 Actualizar resultados"}
         </button>
-      </div>
+      </div> */}
       {error && <p className="formulario-error">{error}</p>}
 
-      <h4>Números atrasados ({atrasados.length})</h4>
+      {/* <h4>Números atrasados ({atrasados.length})</h4>
       <div className="perm-scroll perm-scroll-cron">
         <table className="tabla-permutantes tabla-cron">
           <thead>{encabezado}</thead>
@@ -219,7 +219,7 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
         <p className="perm-seleccion-copiar">
           {atrasados.map((t) => t.combinacion).join(" ")}
         </p>
-      )}
+      )} */}
 
       <div className="perm-filtros">
         <h4 style={{ margin: 0 }}>Todos los números (000-999)</h4>

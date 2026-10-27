@@ -204,7 +204,7 @@ function TablaIntervalos({ titulo, descripcion, stats, filtro, minVeces, umbral,
             <option value="numero">Número</option>
             <option value="cantidad">Veces que ha caído</option>
             <option value="sinCaer">{unidad} sin caer</option>
-            <option value="atraso">Atraso ({unidad})</option>
+            <option value="atraso">cronologico ({unidad})</option>
             <option value="veces">× su promedio (más atrasado)</option>
             <option value="cv">Regularidad (más regular primero)</option>
           </select>
@@ -498,7 +498,7 @@ export default function PantallaMiercolesAnalisis({ busqueda, busquedaFecha, mod
   const [error, setError] = useState("");
   const [actualizando, setActualizando] = useState(false);
 
-  const [seccion, setSeccion] = useState("miercoles");
+  const [seccion, setSeccion] = useState("historico");
   const [minVeces, setMinVeces] = useState(3);
   const [umbral, setUmbral] = useState(1.5);
   const [divisorTres, setDivisorTres] = useState(7); // 7 = miércoles, 1 = días
@@ -557,10 +557,10 @@ export default function PantallaMiercolesAnalisis({ busqueda, busquedaFecha, mod
       <div className="perm-filtros">
         <div className="pestanas">
           {[
-            ["miercoles", "Tabla 1 · Miércoles"],
-            ["historico", "Tabla 2 · Todo el histórico"],
-            ["porfecha", "Cada miércoles"],
-            ["tres", "Por lotería (solo datos recientes)"],
+            ["miercoles", "Miércoles 2 cifras"],
+            ["historico", "Todo el histórico 2 cifras"],
+            // ["porfecha", "Cada miércoles"],
+            // ["tres", "Por lotería (solo datos recientes)"],
           ].map(([v, t]) => (
             <button key={v} className={seccion === v ? "activa" : ""} onClick={() => setSeccion(v)}>
               {t}
@@ -599,7 +599,7 @@ export default function PantallaMiercolesAnalisis({ busqueda, busquedaFecha, mod
 
       {datos && seccion === "historico" && (
         <TablaIntervalos
-          titulo="Tabla 2 · Todo el histórico (todas las loterías, todos los días)"
+          titulo="Tabla 2 · Todo el histórico 2 cifras(todas las loterías, todos los días)"
           descripcion={`Basado en ${datos.total.toLocaleString()} números del histórico; se cuentan todas las veces que cayó cada terminación y los intervalos se miden entre fechas distintas.`}
           stats={statsTodas}
           filtro={filtro}

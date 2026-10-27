@@ -127,7 +127,6 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
       <th>Número</th>
       <th>Veces</th>
       <th>Prom. días entre caídas</th>
-      <th>Mediana</th>
       <th>Mín</th>
       <th>Máx</th>
       <th title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio">
@@ -135,7 +134,7 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
       </th>
       <th>Última vez</th>
       <th>Días sin caer</th>
-      <th>Atraso (días)</th>
+      <th>Atraso(días)/promedio</th>
       <th>× su promedio</th>
       <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
         Todas las veces que cayó (antigua → reciente)
@@ -151,7 +150,6 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
       </td>
       <td className="perm-cantidad">{t.cantidad}</td>
       <td>{entero(t.promedio)}</td>
-      <td>{entero(t.mediana)}</td>
       <td>{entero(t.min)}</td>
       <td>{entero(t.max)}</td>
       <td>{decimal(t.cv)}</td>
@@ -248,19 +246,19 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
       </div>
       {error && <p className="formulario-error">{error}</p>}
 
-      <h4>Números atrasados ({atrasados.length.toLocaleString()})</h4>
+      {/* <h4>Números atrasados ({atrasados.length.toLocaleString()})</h4>
       <div className="perm-scroll perm-scroll-cron">
         <table className="tabla-permutantes tabla-cron">
           <thead>{encabezado}</thead>
           <tbody>{atrasados.slice(0, verAtrasados).map(fila)}</tbody>
         </table>
-      </div>
-      {masBoton(verAtrasados, atrasados.length, setVerAtrasados)}
+      </div> */}
+      {/* {masBoton(verAtrasados, atrasados.length, setVerAtrasados)}
       {atrasados.length > 0 && (
         <p className="perm-seleccion-copiar">
           {atrasados.slice(0, verAtrasados).map((t) => t.combinacion).join(" ")}
         </p>
-      )}
+      )} */}
 
       <div className="perm-filtros">
         <h4 style={{ margin: 0 }}>Todos los números (0000-9999)</h4>

@@ -203,35 +203,35 @@ async function manejarSincronizar() {
              >
             Histórico 4 cifras
          </button>
-          <button
+          {/* <button
             className={ventana === "resumen" ? "activa" : ""}
             onClick={() => setVentana("resumen")}
           >
             Resumen
-          </button>
+          </button> */}
           <button
             className={ventana === "excel" ? "activa" : ""}
             onClick={() => setVentana("excel")}
           >
-            All loteries
+            Todas las loterias 4 y 2 cifras 
           </button>
           <button
             className={ventana === "miercoles" ? "activa" : ""}
             onClick={() => setVentana("miercoles")}
           >
-            Miércoles
+            Miércoles Meta Valle Manizales 4 y 2
           </button>
           <button className={ventana === "miercolesAnalisis" ? "activa" : ""} onClick={() => setVentana("miercolesAnalisis")}>
-           Miércoles análisis
+           Miercoles paga triple analisis
          </button>
           <button
             className={ventana === "viernes" ? "activa" : ""}
             onClick={() => setVentana("viernes")}
           >
-            Viernes
+            Viernes Risaralda Medellin y Santander 4 y 2
           </button>
           <button className={ventana === "viernesAnalisis" ? "activa" : ""} onClick={() => setVentana("viernesAnalisis")}>
-            Viernes análisis
+            Viernes paga triple análisis
           </button>
           <button
        className={ventana === "permutantes3" ? "activa" : ""}
@@ -243,10 +243,10 @@ async function manejarSincronizar() {
           Demo 3 dígitos
          </button>
           <button className={ventana === "intervalos3" ? "activa" : ""} onClick={() => setVentana("intervalos3")}>
-          Atrasados 3 dígitos
+          Analisis 3 dígitos
          </button>
           <button className={ventana === "intervalos4" ? "activa" : ""} onClick={() => setVentana("intervalos4")}>
-          Atrasados 4 dígitos
+          Analisis 4 dígitos
          </button>
           <button
        className={ventana === "permutantes" ? "activa" : ""}

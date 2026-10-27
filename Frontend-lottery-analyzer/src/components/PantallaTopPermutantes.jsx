@@ -9,7 +9,7 @@ export default function PantallaTopPermutantes() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    obtenerTopPermutantes(10)
+    obtenerTopPermutantes(715)
       .then((data) => setTop(data.top))
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
@@ -20,7 +20,7 @@ export default function PantallaTopPermutantes() {
 
   return (
     <div className="top-perm">
-      <h3>Las 10 permutaciones que más han caído</h3>
+      <h3>Las 715 permutaciones que más han caído</h3>
 
       <div className="top-perm-lista">
         {top.map((g, i) => (

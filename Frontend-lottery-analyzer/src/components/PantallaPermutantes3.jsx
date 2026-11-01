@@ -8,6 +8,7 @@ const CIFRAS = 3;
 // El 0 vale como el mayor (10) para el orden
 const valor = (d) => (d === 0 ? 10 : d);
 const MAX_PERMUTACIONES = 6; // 3! = máximo de permutaciones distintas
+const MS_DIA = 86400000;
 
 // Todos los grupos de 3 dígitos sin importar el orden: 220 en total
 function generarGrupos() {
@@ -25,6 +26,14 @@ function formatoFecha(iso) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
+
+const aDias = (iso) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / MS_DIA);
+};
+
+const entero = (v) => (v == null ? "—" : Math.round(v).toLocaleString());
+const decimal = (v) => (v == null ? "—" : v.toFixed(1));
 
 function permutacionesUnicas(digitos) {
   const resultado = new Set();
@@ -63,12 +72,37 @@ function grupoCoincide(digitos, terminos) {
   return terminos.some((t) => grupoCoincideUno(digitos, t));
 }
 
+// Estadísticas de intervalos a partir de una lista de fechas (ISO, cualquier orden)
+function statsDeFechas(listaFechas, hoy) {
+  const fechas = [...listaFechas].sort();
+  const dias = fechas.map(aDias);
+  const gaps = [];
+  for (let i = 1; i < dias.length; i++) gaps.push(dias[i] - dias[i - 1]);
+
+  const cantidad = fechas.length;
+  const ultimaFecha = cantidad ? fechas[cantidad - 1] : null;
+  const promedio = gaps.length ? gaps.reduce((s, g) => s + g, 0) / gaps.length : null;
+  const min = gaps.length ? Math.min(...gaps) : null;
+  const max = gaps.length ? Math.max(...gaps) : null;
+  let cv = null;
+  if (promedio) {
+    const varianza = gaps.reduce((s, g) => s + (g - promedio) ** 2, 0) / gaps.length;
+    cv = Math.sqrt(varianza) / promedio;
+  }
+  const diasSinCaer = cantidad ? hoy - dias[cantidad - 1] : null;
+  const atraso = diasSinCaer != null && promedio != null ? diasSinCaer - promedio : null;
+  const veces = diasSinCaer != null && promedio ? diasSinCaer / promedio : null;
+
+  return { fechas, gaps, cantidad, ultimaFecha, promedio, min, max, cv, diasSinCaer, atraso, veces };
+}
+
 export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusqueda = "cualquiera" }) {
   const [conteos, setConteos] = useState({});
   const [ultimasFechas, setUltimasFechas] = useState({});
   const [fechas, setFechas] = useState({}); // todas las fechas de cada número 000-999
   const [totalHistorico, setTotalHistorico] = useState(0);
   const [filtroCantidad, setFiltroCantidad] = useState("");
+  const [orden, setOrden] = useState("grupo");
   const [error, setError] = useState("");
 
   // Carga los resultados desde el servidor
@@ -177,42 +211,14 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     [visibles]
   );
 
-  // Las 1000 combinaciones exactas (000 a 999), de la que cayó hace más
-  // tiempo a la más reciente. Las que nunca han caído van al final.
+  // Las 1000 combinaciones exactas (000 a 999) con su cantidad
   const todas = useMemo(
     () =>
       Array.from({ length: 1000 }, (_, i) => {
         const combinacion = String(i).padStart(3, "0");
-        const fs = fechas[combinacion] || []; // vienen en orden ascendente
-        const n = fs.length;
-        return {
-          combinacion,
-          cantidad: conteos[combinacion] || 0,
-          ultimaFecha: fs[n - 1] || ultimasFechas[combinacion] || null,
-          penultimaFecha: fs[n - 2] || null,
-          antepenultimaFecha: fs[n - 3] || null,
-        };
-      }).sort((a, b) => {
-        if (a.ultimaFecha && b.ultimaFecha) {
-          if (a.ultimaFecha !== b.ultimaFecha)
-            return a.ultimaFecha.localeCompare(b.ultimaFecha); // más antigua primero
-          return a.combinacion.localeCompare(b.combinacion); // mismo día: por número
-        }
-        if (a.ultimaFecha) return -1; // las que sí han caído primero
-        if (b.ultimaFecha) return 1;
-        return a.combinacion.localeCompare(b.combinacion); // nunca han caído
+        return { combinacion, cantidad: conteos[combinacion] || 0 };
       }),
-    [conteos, ultimasFechas, fechas]
-  );
-
-  // Las mismas 1000 combinaciones, del que más cae al que menos cae
-  const todasPorFrecuencia = useMemo(
-    () =>
-      [...todas].sort((a, b) => {
-        if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
-        return a.combinacion.localeCompare(b.combinacion); // desempate estable
-      }),
-    [todas]
+    [conteos]
   );
 
   // Suma de todas las veces que ha caído cada combinación 000-999
@@ -224,15 +230,46 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
   const porcentaje = (cantidad) =>
     totalCantidad > 0 ? `${((cantidad / totalCantidad) * 100).toFixed(3)}%` : "0%";
 
-  const coincideBusquedaTodas = (t) => {
-    const porFecha = fechaCoincide(t.ultimaFecha);
-    const porNumero =
-      terminos.length > 0 &&
-      terminos.some((x) =>
-        ultimasCifras ? t.combinacion.endsWith(x) : t.combinacion.includes(x)
-      );
-    return porNumero || porFecha;
-  };
+  // ============ INTERVALOS Y ATRASADOS DE LOS 220 GRUPOS ============
+  // Las fechas de un grupo son las de todas sus permutaciones juntas.
+  const statsGrupos = useMemo(() => {
+    const hoy = Math.floor(Date.now() / MS_DIA);
+    return grupos.map((g) => {
+      const fs = g.permutaciones.flatMap((p) => fechas[p] || []);
+      return { ...g, ...statsDeFechas(fs, hoy) };
+    });
+  }, [grupos, fechas]);
+
+  const tablaIntervalos = useMemo(() => {
+    const copia = [...statsGrupos];
+    const nulosAlFinal = (campo, desc) => (a, b) => {
+      const x = a[campo], y = b[campo];
+      if (x == null && y == null) return a.etiqueta.localeCompare(b.etiqueta);
+      if (x == null) return 1;
+      if (y == null) return -1;
+      return (desc ? y - x : x - y) || a.etiqueta.localeCompare(b.etiqueta);
+    };
+    switch (orden) {
+      case "cantidad": return copia.sort(nulosAlFinal("cantidad", true));
+      case "promedio": return copia.sort(nulosAlFinal("promedio", false));
+      case "veces": return copia.sort(nulosAlFinal("veces", true));
+      case "sinCaer": return copia.sort(nulosAlFinal("diasSinCaer", true));
+      case "cv": return copia.sort(nulosAlFinal("cv", false));
+      default: return copia; // orden natural de los grupos
+    }
+  }, [statsGrupos, orden]);
+
+  const promedioGlobal = useMemo(() => {
+    const con = statsGrupos.filter((t) => t.promedio != null);
+    return con.length ? con.reduce((s, t) => s + t.promedio, 0) / con.length : null;
+  }, [statsGrupos]);
+
+  const nuncaHanCaido = statsGrupos.filter((t) => t.cantidad === 0).length;
+
+  const coincideBusquedaIntervalos = (g) =>
+    coincideBusqueda(g) ||
+    g.fechas.some(fechaCoincide) ||
+    (ultimasCifras && grupoTieneFinal(g));
 
   // Clasifica cada combinación 000-999 según sus dígitos repetidos
   const tiposRepeticion = useMemo(() => {
@@ -253,6 +290,29 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
 
   return (
     <div className="permutantes">
+      {/* Columnas angostas para la tabla de intervalos de grupos */}
+      <style>{`
+        .tabla-intervalos-grupos th,
+        .tabla-intervalos-grupos td {
+          padding: 4px 6px;
+          font-size: 0.85rem;
+        }
+        .tabla-intervalos-grupos th.col-ang,
+        .tabla-intervalos-grupos td.col-ang {
+          width: 56px;
+          min-width: 0;
+          max-width: 64px;
+          text-align: center;
+          white-space: normal;
+          line-height: 1.1;
+        }
+        .tabla-intervalos-grupos td.col-fechas {
+          min-width: 380px;
+          white-space: normal;
+          text-align: left;
+        }
+      `}</style>
+
       <h3>
         Permutantes de 3 cifras ({grupos.length})
         {(terminos.length > 0 || terminosFecha.length > 0) && ` · ${totalBusqueda} coinciden`}
@@ -284,96 +344,97 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
       </div>
       {error && <p className="formulario-error">{error}</p>}
 
-      <div className="permutantes-dos-grupos">
-
-        {/* ============ TODAS LAS COMBINACIONES 000-999 ============ */}
-        <div className="perm-scroll perm-scroll-cron">
-          <table className="tabla-permutantes tabla-cron">
-            <thead>
-              <tr>
-                <th className="sticky-1">#</th>
-                <th>Combinación</th>
-                <th>Última vez</th>
-                <th>Penúltima</th>
-                <th>Antepenúltima</th>
-                <th>Cantidad</th>
-                <th>%</th>
+      {/* ============ INTERVALOS Y ATRASADOS (220 GRUPOS) ============ */}
+      <h4>Intervalos y grupos atrasados ({grupos.length})</h4>
+      <p>
+        Para cada grupo: cuántas veces ha caído (cualquiera de sus permutaciones) y cada
+        cuántos días cae en promedio. Promedio general entre caídas: {entero(promedioGlobal)}{" "}
+        días · Nunca han caído: {nuncaHanCaido}
+      </p>
+      <div className="perm-filtros">
+        <label>
+          Ordenar por:
+          <select value={orden} onChange={(e) => setOrden(e.target.value)}>
+            <option value="grupo">Grupo</option>
+            <option value="cantidad">Veces que ha caído</option>
+            <option value="promedio">Promedio entre caídas (menor primero)</option>
+            <option value="sinCaer">Días sin caer</option>
+            <option value="veces">× su promedio (más atrasado)</option>
+            <option value="cv">Regularidad (más regular primero)</option>
+          </select>
+        </label>
+      </div>
+      <div className="perm-scroll perm-scroll-cron">
+        <table className="tabla-permutantes tabla-cron tabla-intervalos-grupos">
+          <thead>
+            <tr>
+              <th className="col-ang">#</th>
+              <th className="col-ang">Grupo</th>
+              <th className="col-ang">Veces</th>
+              <th className="col-ang" title="Promedio de días entre caídas">Prom. días</th>
+              <th className="col-ang">Mín</th>
+              <th className="col-ang">Máx</th>
+              <th
+                className="col-ang"
+                title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio"
+              >
+                Regul.
+              </th>
+              <th>Última vez</th>
+              <th className="col-ang">Días sin caer</th>
+              <th className="col-ang" title="Días sin caer menos su promedio">Atraso</th>
+              <th className="col-ang" title="Días sin caer / su promedio">× prom.</th>
+              <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
+                Todas las veces que cayó (antigua → reciente)
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {tablaIntervalos.map((g, i) => (
+              <tr
+                key={g.etiqueta}
+                className={`${coincideBusquedaIntervalos(g) ? "fila-busqueda" : ""} ${
+                  coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
+                }`}
+              >
+                <td className="col-ang">{i + 1}</td>
+                <td className="col-ang perm-grupo-cron">
+                  <strong>{g.etiqueta}</strong>
+                </td>
+                <td className="col-ang perm-cantidad">{g.cantidad}</td>
+                <td className="col-ang">{entero(g.promedio)}</td>
+                <td className="col-ang">{entero(g.min)}</td>
+                <td className="col-ang">{entero(g.max)}</td>
+                <td className="col-ang">{decimal(g.cv)}</td>
+                <td>{g.ultimaFecha ? formatoFecha(g.ultimaFecha) : "Nunca"}</td>
+                <td className="col-ang">{entero(g.diasSinCaer)}</td>
+                <td className="col-ang">{entero(g.atraso)}</td>
+                <td className="col-ang perm-porcentaje">
+                  {g.veces != null ? `${g.veces.toFixed(2)}×` : "—"}
+                </td>
+                <td className="col-fechas">
+                  {g.fechas.length === 0 && "Nunca"}
+                  {g.fechas.map((f, k) => (
+                    <span
+                      key={k}
+                      style={{
+                        display: "inline-block",
+                        marginRight: 8,
+                        padding: "0 4px",
+                        borderRadius: 3,
+                        background: fechaCoincide(f) ? "#fde68a" : "transparent",
+                        color: fechaCoincide(f) ? "#000" : undefined,
+                      }}
+                    >
+                      {formatoFecha(f)}
+                      {k > 0 && <small style={{ opacity: 0.6 }}> (+{g.gaps[k - 1]})</small>}
+                    </span>
+                  ))}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {todas.map((t, i) => (
-                <tr
-                  key={t.combinacion}
-                  className={`${coincideBusquedaTodas(t) ? "fila-busqueda" : ""} ${
-                    coincideCantidad(t.cantidad) ? "fila-cantidad" : ""
-                  }`}
-                >
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="perm-grupo-cron">
-                    <strong>{t.combinacion}</strong>
-                  </td>
-                  <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-                  <td>{t.penultimaFecha ? formatoFecha(t.penultimaFecha) : "—"}</td>
-                  <td>{t.antepenultimaFecha ? formatoFecha(t.antepenultimaFecha) : "—"}</td>
-                  <td className="perm-cantidad">{t.cantidad}</td>
-                  <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={5}>Total</td>
-                <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
-                <td className="perm-porcentaje">100%</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-
-        {/* ============ TODAS 000-999: DEL QUE MÁS CAE AL QUE MENOS CAE ============ */}
-        <div className="perm-scroll perm-scroll-cron">
-          <table className="tabla-permutantes tabla-cron">
-            <thead>
-              <tr>
-                <th className="sticky-1">#</th>
-                <th>Combinación</th>
-                <th>Cantidad</th>
-                <th>%</th>
-                <th>Última vez</th>
-                <th>Penúltima</th>
-                <th>Antepenúltima</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todasPorFrecuencia.map((t, i) => (
-                <tr
-                  key={t.combinacion}
-                  className={`${coincideBusquedaTodas(t) ? "fila-busqueda" : ""} ${
-                    coincideCantidad(t.cantidad) ? "fila-cantidad" : ""
-                  }`}
-                >
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="perm-grupo-cron">
-                    <strong>{t.combinacion}</strong>
-                  </td>
-                  <td className="perm-cantidad">{t.cantidad}</td>
-                  <td className="perm-porcentaje">{porcentaje(t.cantidad)}</td>
-                  <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-                  <td>{t.penultimaFecha ? formatoFecha(t.penultimaFecha) : "—"}</td>
-                  <td>{t.antepenultimaFecha ? formatoFecha(t.antepenultimaFecha) : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={2}>Total</td>
-                <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
-                <td className="perm-porcentaje">100%</td>
-                <td colSpan={3}></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* ============ ZONA INFERIOR ============ */}

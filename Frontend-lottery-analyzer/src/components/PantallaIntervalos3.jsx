@@ -105,20 +105,22 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
 
   const encabezado = (
     <tr>
-      <th>#</th>
-      <th>Número</th>
-      <th>Veces</th>
-      <th>Prom. días entre caídas</th>
-      <th>Mín</th>
-      <th>Máx</th>
-      <th title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio">
-        Regularidad
+      <th className="col-ang">#</th>
+      <th className="col-ang">Número</th>
+      <th className="col-ang">Veces</th>
+      <th className="col-ang" title="Promedio de días entre caídas">Prom. días</th>
+      <th className="col-ang">Mín</th>
+      <th className="col-ang">Máx</th>
+      <th
+        className="col-ang"
+        title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio"
+      >
+        Regul.
       </th>
       <th>Última vez</th>
-      <th>Días sin caer</th>
-      <th>Atraso 
-        (días) /promedio</th>
-      <th>× su promedio</th>
+      <th className="col-ang">Días sin caer</th>
+      <th className="col-ang" title="Días sin caer menos su promedio">Atraso</th>
+      <th className="col-ang" title="Días sin caer / su promedio">× prom.</th>
       <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
         Todas las veces que cayó (antigua → reciente)
       </th>
@@ -127,21 +129,22 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
 
   const fila = (t, i) => (
     <tr key={t.combinacion} className={coincideBusqueda(t) ? "fila-busqueda" : ""}>
-      <td>{i + 1}</td>
-      <td className="perm-grupo-cron">
+      <td className="col-ang">{i + 1}</td>
+      <td className="col-ang perm-grupo-cron">
         <strong>{t.combinacion}</strong>
       </td>
-      <td className="perm-cantidad">{t.cantidad}</td>
-      <td>{entero(t.promedio)}</td>
-    
-      <td>{entero(t.min)}</td>
-      <td>{entero(t.max)}</td>
-      <td>{decimal(t.cv)}</td>
+      <td className="col-ang perm-cantidad">{t.cantidad}</td>
+      <td className="col-ang">{entero(t.promedio)}</td>
+      <td className="col-ang">{entero(t.min)}</td>
+      <td className="col-ang">{entero(t.max)}</td>
+      <td className="col-ang">{decimal(t.cv)}</td>
       <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-      <td>{entero(t.diasSinCaer)}</td>
-      <td>{entero(t.atraso)}</td>
-      <td className="perm-porcentaje">{t.veces != null ? `${t.veces.toFixed(2)}×` : "—"}</td>
-      <td style={{ minWidth: 460, whiteSpace: "normal", textAlign: "left" }}>
+      <td className="col-ang">{entero(t.diasSinCaer)}</td>
+      <td className="col-ang">{entero(t.atraso)}</td>
+      <td className="col-ang perm-porcentaje">
+        {t.veces != null ? `${t.veces.toFixed(2)}×` : "—"}
+      </td>
+      <td className="col-fechas">
         {t.fechas.length === 0 && "Nunca"}
         {t.fechas.map((f, k) => (
           <span
@@ -165,6 +168,29 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
 
   return (
     <div className="permutantes">
+      {/* Columnas angostas */}
+      <style>{`
+        .tabla-intervalos-3 th,
+        .tabla-intervalos-3 td {
+          padding: 4px 6px;
+          font-size: 0.85rem;
+        }
+        .tabla-intervalos-3 th.col-ang,
+        .tabla-intervalos-3 td.col-ang {
+          width: 56px;
+          min-width: 0;
+          max-width: 64px;
+          text-align: center;
+          white-space: normal;
+          line-height: 1.1;
+        }
+        .tabla-intervalos-3 td.col-fechas {
+          min-width: 380px;
+          white-space: normal;
+          text-align: left;
+        }
+      `}</style>
+
       <h3>
         Intervalos y números atrasados (3 cifras)
         {hayBusqueda && ` · ${stats.filter(coincideBusqueda).length} coinciden`}
@@ -175,51 +201,8 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
         entre caídas: {entero(promedioGlobal)} días · Nunca han caído: {nuncaHanCaido}
       </p>
 
-      {/* <div className="perm-filtros">
-        <label>
-          Mínimo de veces caído:
-          <input
-            type="number"
-            min="2"
-            inputMode="numeric"
-            value={minVeces}
-            onChange={(e) => setMinVeces(e.target.value)}
-          />
-        </label>
-        <label>
-          Atrasado si lleva sin caer (× su promedio):
-          <input
-            type="number"
-            min="0"
-            step="0.1"
-            inputMode="decimal"
-            value={umbral}
-            onChange={(e) => setUmbral(e.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          className="perm-limpiar"
-          onClick={cargarDatos}
-          disabled={actualizando}
-        >
-          {actualizando ? "⏳ Actualizando..." : "🔄 Actualizar resultados"}
-        </button>
-      </div> */}
       {error && <p className="formulario-error">{error}</p>}
 
-      {/* <h4>Números atrasados ({atrasados.length})</h4>
-      <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
-          <thead>{encabezado}</thead>
-          <tbody>{atrasados.map(fila)}</tbody>
-        </table>
-      </div>
-      {atrasados.length > 0 && (
-        <p className="perm-seleccion-copiar">
-          {atrasados.map((t) => t.combinacion).join(" ")}
-        </p>
-      )} */}
 
       <div className="perm-filtros">
         <h4 style={{ margin: 0 }}>Todos los números (000-999)</h4>
@@ -236,7 +219,7 @@ export default function PantallaIntervalos3({ busqueda, busquedaFecha, modoBusqu
         </label>
       </div>
       <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
+        <table className="tabla-permutantes tabla-cron tabla-intervalos-3">
           <thead>{encabezado}</thead>
           <tbody>{todos.map(fila)}</tbody>
         </table>

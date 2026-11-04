@@ -233,20 +233,17 @@ async function manejarSincronizar() {
           <button className={ventana === "viernesAnalisis" ? "activa" : ""} onClick={() => setVentana("viernesAnalisis")}>
             Viernes paga triple análisis
           </button>
+          <button className={ventana === "seleccion3" ? "activa" : ""} onClick={() => setVentana("seleccion3")}>
+          Demo 3 dígitos
+         </button>
           <button
        className={ventana === "permutantes3" ? "activa" : ""}
       onClick={() => setVentana("permutantes3")}
            >
          combinados 3 digitos
           </button>
-          <button className={ventana === "seleccion3" ? "activa" : ""} onClick={() => setVentana("seleccion3")}>
-          Demo 3 dígitos
-         </button>
           <button className={ventana === "intervalos3" ? "activa" : ""} onClick={() => setVentana("intervalos3")}>
           Analisis 3 dígitos
-         </button>
-          <button className={ventana === "intervalos4" ? "activa" : ""} onClick={() => setVentana("intervalos4")}>
-          Analisis 4 dígitos
          </button>
           <button
        className={ventana === "permutantes" ? "activa" : ""}
@@ -254,6 +251,9 @@ async function manejarSincronizar() {
            >
           Combinado 4 digitos
           </button>
+          <button className={ventana === "intervalos4" ? "activa" : ""} onClick={() => setVentana("intervalos4")}>
+          Analisis 4 dígitos
+         </button>
           <button
       className={ventana === "topperm" ? "activa" : ""}
       onClick={() => setVentana("topperm")}

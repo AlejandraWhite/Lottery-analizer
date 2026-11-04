@@ -123,19 +123,22 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
 
   const encabezado = (
     <tr>
-      <th>#</th>
-      <th>Número</th>
-      <th>Veces</th>
-      <th>Prom. días entre caídas</th>
-      <th>Mín</th>
-      <th>Máx</th>
-      <th title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio">
-        Regularidad
+      <th className="col-ang">#</th>
+      <th className="col-ang">Número</th>
+      <th className="col-ang">Veces</th>
+      <th className="col-ang" title="Promedio de días entre caídas">Prom. días</th>
+      <th className="col-ang">Mín</th>
+      <th className="col-ang">Máx</th>
+      <th
+        className="col-ang"
+        title="Desviación / promedio. Cerca de 0 = muy regular; cerca de 1 = comportamiento aleatorio"
+      >
+        Regul.
       </th>
       <th>Última vez</th>
-      <th>Días sin caer</th>
-      <th>Atraso(días)/promedio</th>
-      <th>× su promedio</th>
+      <th className="col-ang">Días sin caer</th>
+      <th className="col-ang" title="Días sin caer menos su promedio">Atraso</th>
+      <th className="col-ang" title="Días sin caer / su promedio">× prom.</th>
       <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
         Todas las veces que cayó (antigua → reciente)
       </th>
@@ -144,20 +147,22 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
 
   const fila = (t, i) => (
     <tr key={t.combinacion} className={coincideBusqueda(t) ? "fila-busqueda" : ""}>
-      <td>{i + 1}</td>
-      <td className="perm-grupo-cron">
+      <td className="col-ang">{i + 1}</td>
+      <td className="col-ang perm-grupo-cron">
         <strong>{t.combinacion}</strong>
       </td>
-      <td className="perm-cantidad">{t.cantidad}</td>
-      <td>{entero(t.promedio)}</td>
-      <td>{entero(t.min)}</td>
-      <td>{entero(t.max)}</td>
-      <td>{decimal(t.cv)}</td>
+      <td className="col-ang perm-cantidad">{t.cantidad}</td>
+      <td className="col-ang">{entero(t.promedio)}</td>
+      <td className="col-ang">{entero(t.min)}</td>
+      <td className="col-ang">{entero(t.max)}</td>
+      <td className="col-ang">{decimal(t.cv)}</td>
       <td>{t.ultimaFecha ? formatoFecha(t.ultimaFecha) : "Nunca"}</td>
-      <td>{entero(t.diasSinCaer)}</td>
-      <td>{entero(t.atraso)}</td>
-      <td className="perm-porcentaje">{t.veces != null ? `${t.veces.toFixed(2)}×` : "—"}</td>
-      <td style={{ minWidth: 460, whiteSpace: "normal", textAlign: "left" }}>
+      <td className="col-ang">{entero(t.diasSinCaer)}</td>
+      <td className="col-ang">{entero(t.atraso)}</td>
+      <td className="col-ang perm-porcentaje">
+        {t.veces != null ? `${t.veces.toFixed(2)}×` : "—"}
+      </td>
+      <td className="col-fechas">
         {t.fechas.length === 0 && "Nunca"}
         {t.fechas.map((f, k) => (
           <span
@@ -194,6 +199,29 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
 
   return (
     <div className="permutantes">
+      {/* Columnas angostas */}
+      <style>{`
+        .tabla-intervalos-4 th,
+        .tabla-intervalos-4 td {
+          padding: 4px 6px;
+          font-size: 0.85rem;
+        }
+        .tabla-intervalos-4 th.col-ang,
+        .tabla-intervalos-4 td.col-ang {
+          width: 56px;
+          min-width: 0;
+          max-width: 64px;
+          text-align: center;
+          white-space: normal;
+          line-height: 1.1;
+        }
+        .tabla-intervalos-4 td.col-fechas {
+          min-width: 380px;
+          white-space: normal;
+          text-align: left;
+        }
+      `}</style>
+
       <h3>
         Intervalos y números atrasados (4 cifras)
         {hayBusqueda && ` · ${stats.filter(coincideBusqueda).length} coinciden`}
@@ -248,7 +276,7 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
 
       {/* <h4>Números atrasados ({atrasados.length.toLocaleString()})</h4>
       <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
+        <table className="tabla-permutantes tabla-cron tabla-intervalos-4">
           <thead>{encabezado}</thead>
           <tbody>{atrasados.slice(0, verAtrasados).map(fila)}</tbody>
         </table>
@@ -275,7 +303,7 @@ export default function PantallaIntervalos4({ busqueda, busquedaFecha, modoBusqu
         </label>
       </div>
       <div className="perm-scroll perm-scroll-cron">
-        <table className="tabla-permutantes tabla-cron">
+        <table className="tabla-permutantes tabla-cron tabla-intervalos-4">
           <thead>{encabezado}</thead>
           <tbody>{todos.slice(0, verTodos).map(fila)}</tbody>
         </table>

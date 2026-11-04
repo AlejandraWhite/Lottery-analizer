@@ -201,16 +201,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
       ? 0
       : visibles.filter((g) => g.cantidad === Number(filtroCantidad)).length;
 
-  // Del que más cae al que menos cae
-  const porFrecuencia = useMemo(
-    () =>
-      [...visibles].sort((a, b) => {
-        if (b.cantidad !== a.cantidad) return b.cantidad - a.cantidad;
-        return a.etiqueta.localeCompare(b.etiqueta);
-      }),
-    [visibles]
-  );
-
   // Las 1000 combinaciones exactas (000 a 999) con su cantidad
   const todas = useMemo(
     () =>
@@ -226,9 +216,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     () => todas.reduce((s, t) => s + t.cantidad, 0),
     [todas]
   );
-
-  const porcentaje = (cantidad) =>
-    totalCantidad > 0 ? `${((cantidad / totalCantidad) * 100).toFixed(3)}%` : "0%";
 
   // ============ INTERVALOS Y ATRASADOS DE LOS 220 GRUPOS ============
   // Las fechas de un grupo son las de todas sus permutaciones juntas.
@@ -271,6 +258,9 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
     g.fechas.some(fechaCoincide) ||
     (ultimasCifras && grupoTieneFinal(g));
 
+  const porcentaje = (cantidad) =>
+    totalCantidad > 0 ? `${((cantidad / totalCantidad) * 100).toFixed(3)}%` : "0%";
+
   // Clasifica cada combinación 000-999 según sus dígitos repetidos
   const tiposRepeticion = useMemo(() => {
     const tipos = [
@@ -306,10 +296,13 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
           white-space: normal;
           line-height: 1.1;
         }
-        .tabla-intervalos-grupos td.col-fechas {
-          min-width: 380px;
-          white-space: normal;
-          text-align: left;
+        .tabla-intervalos-grupos th.col-perm,
+        .tabla-intervalos-grupos td.col-perm {
+          width: 60px;
+          min-width: 0;
+          max-width: 70px;
+          text-align: center;
+          white-space: nowrap;
         }
       `}</style>
 
@@ -356,7 +349,7 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
           Ordenar por:
           <select value={orden} onChange={(e) => setOrden(e.target.value)}>
             <option value="grupo">Grupo</option>
-            <option value="cantidad">Veces que ha caído</option>
+            <option value="cantidad">Veces que ha caído (cronologico)</option>
             <option value="promedio">Promedio entre caídas (menor primero)</option>
             <option value="sinCaer">Días sin caer</option>
             <option value="veces">× su promedio (más atrasado)</option>
@@ -384,9 +377,15 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
               <th className="col-ang">Días sin caer</th>
               <th className="col-ang" title="Días sin caer menos su promedio">Atraso</th>
               <th className="col-ang" title="Días sin caer / su promedio">× prom.</th>
-              <th title="De la más antigua a la más reciente. Entre paréntesis: días desde la caída anterior">
-                Todas las veces que cayó (antigua → reciente)
-              </th>
+              {columnasPerm.map((_, i) => (
+                <th
+                  key={i}
+                  className="col-perm"
+                  title="Número que cayó de este grupo y las veces que cayó"
+                >
+                  {i + 1}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -412,34 +411,35 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 <td className="col-ang perm-porcentaje">
                   {g.veces != null ? `${g.veces.toFixed(2)}×` : "—"}
                 </td>
-                <td className="col-fechas">
-                  {g.fechas.length === 0 && "Nunca"}
-                  {g.fechas.map((f, k) => (
-                    <span
-                      key={k}
-                      style={{
-                        display: "inline-block",
-                        marginRight: 8,
-                        padding: "0 4px",
-                        borderRadius: 3,
-                        background: fechaCoincide(f) ? "#fde68a" : "transparent",
-                        color: fechaCoincide(f) ? "#000" : undefined,
-                      }}
+                {columnasPerm.map((_, j) => {
+                  const p = g.permutaciones[j];
+                  return (
+                    <td
+                      key={j}
+                      className={`col-perm ${p ? "perm-celda" : "perm-celda perm-vacia"}${
+                        terminaEnBusqueda(p) ? " celda-final" : ""
+                      }`}
                     >
-                      {formatoFecha(f)}
-                      {k > 0 && <small style={{ opacity: 0.6 }}> (+{g.gaps[k - 1]})</small>}
-                    </span>
-                  ))}
-                </td>
+                      {p ?? ""}
+                      {p && <span className="perm-veces">{conteos[p] || 0}</span>}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={2}>Total</td>
+              <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
+              <td colSpan={8 + MAX_PERMUTACIONES}></td>
+            </tr>
+          </tfoot>
         </table>
       </div>
 
-      {/* ============ ZONA INFERIOR ============ */}
+      {/* ============ RESUMEN POR TIPO DE REPETICIÓN ============ */}
       <div className="perm-inferior">
-        {/* Resumen por tipo de repetición */}
         <div className="perm-scroll perm-resumen-tipos">
           <table className="tabla-permutantes">
             <thead>
@@ -468,67 +468,6 @@ export default function PantallaPermutantes3({ busqueda, busquedaFecha, modoBusq
                 <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
                 <td className="perm-porcentaje">100%</td>
                 <td className="perm-porcentaje">100%</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      </div>
-
-      {/* ============ GRUPOS Y SUS COMBINACIONES (abajo) ============ */}
-      <div className="perm-grupos-abajo">
-        <h4>Grupos y sus combinaciones</h4>
-        {/* ============ POR FRECUENCIA + COMBINACIONES ============ */}
-        <div className="perm-scroll perm-scroll-normal">
-          <table className="tabla-permutantes tabla-normal">
-            <thead>
-              <tr>
-                <th className="sticky-1">#</th>
-                <th className="sticky-2">Grupo</th>
-                <th className="sticky-3">Cantidad</th>
-                <th className="sticky-4">Combinaciones</th>
-                <th>%</th>
-                {columnasPerm.map((_, i) => (
-                  <th key={i}>{i + 1}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {porFrecuencia.map((g, i) => (
-                <tr
-                  key={g.etiqueta}
-                  className={`${coincideBusqueda(g) ? "fila-busqueda" : ""} ${
-                    coincideCantidad(g.cantidad) ? "fila-cantidad" : ""
-                  }`}
-                >
-                  <td className="sticky-1">{i + 1}</td>
-                  <td className="sticky-2 perm-grupo">{g.etiqueta}</td>
-                  <td className="sticky-3 perm-cantidad">{g.cantidad}</td>
-                  <td className="sticky-4">{g.permutaciones.length}</td>
-                  <td className="perm-porcentaje">{porcentaje(g.cantidad)}</td>
-                  {columnasPerm.map((_, j) => {
-                    const p = g.permutaciones[j];
-                    return (
-                      <td
-                        key={j}
-                        className={`${p ? "perm-celda" : "perm-celda perm-vacia"}${
-                          terminaEnBusqueda(p) ? " celda-final" : ""
-                        }`}
-                      >
-                        {p ?? ""}
-                        {p && <span className="perm-veces">{conteos[p] || 0}</span>}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={2}>Total</td>
-                <td className="perm-cantidad">{totalCantidad.toLocaleString()}</td>
-                <td></td>
-                <td className="perm-porcentaje">100%</td>
-                <td colSpan={MAX_PERMUTACIONES}></td>
               </tr>
             </tfoot>
           </table>

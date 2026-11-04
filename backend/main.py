@@ -39,6 +39,7 @@ from services.analisis import (
 from services import viernes as servicios_viernes
 from services import miercoles as servicios_miercoles
 from apscheduler.schedulers.background import BackgroundScheduler
+from routers import combinaciones_terminaciones
 
 from database import engine, Base
 
@@ -67,6 +68,7 @@ app.add_middleware(
 
 app.include_router(miercoles_analisis.router)
 app.include_router(viernes_analisis.router)
+app.include_router(combinaciones_terminaciones.router)
 app.include_router(router_historico4.router)
 # =========================================================
 # CONEXIÓN A BASE DE DATOS
